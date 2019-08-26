@@ -210,7 +210,7 @@ public class DataBaseHandler {
 			if (column.getString("type").equals("number")) {// 数字
 				valueList.add(column.get("value").toString());
 			} else if (column.getString("type").equals("date")) {// 日期
-				valueList.add("'" + DateUtils.formatDate(column.getLong("value"), "yyyy-MM-dd hh:mm:ss") + "'");
+				valueList.add("'" + DateUtils.formatDate(column.getLong("value"), "yyyy-MM-dd HH:mm:ss") + "'");
 			} else {// 布尔值和字符串
 				valueList.add("'" + column.get("value") + "'");
 			}
@@ -236,7 +236,7 @@ public class DataBaseHandler {
 			} else if (column.getString("type").equals("number")) {// 数字
 				valueList.add(column.getString("to") + " = " + column.get("value").toString());
 			} else if (column.getString("type").equals("date")) {// 日期
-				valueList.add(column.getString("to") + " = '" + DateUtils.formatDate(column.getLong("value"), "yyyy-MM-dd hh:mm:ss") + "'");
+				valueList.add(column.getString("to") + " = '" + DateUtils.formatDate(column.getLong("value"), "yyyy-MM-dd HH:mm:ss") + "'");
 			} else {// 布尔值和字符串
 				valueList.add(column.getString("to") + " = '" + column.get("value") + "'");
 			}
