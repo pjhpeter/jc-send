@@ -42,7 +42,7 @@ public class TempFileService extends CrudService<TempFileDao, TempFile> {
 	public List<TempFile> insertBatch(List<TempFile> tempFileList) {
 		List<TempFile> returnList = ListUtils.newArrayList();
 		System.out.println("初始化获取数据库连接");
-		this.dataSource = routingDataSource.getTargetDataSource("default");
+		this.dataSource = routingDataSource.getDefaultDataSource();
 		try {
 			connection = this.dataSource.getConnection();
 			connection.setAutoCommit(true);
