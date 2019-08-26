@@ -109,4 +109,15 @@ public class Constant {
 		 */
 		public static final String SEND_URL = "send.url";
 	}
+
+	/**
+	 * 系统的五个列
+	 */
+	public class SysCoumn {
+		public static final String STATUS = "status";
+		public static final String CREATE_BY = "create_by";
+		public static final String CREATE_DATE = "create_date";
+		public static final String UPDATE_BY = "update_by";
+		public static final String UPDATE_DATE = "update_date";
+	}
 }

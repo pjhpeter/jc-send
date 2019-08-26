@@ -93,7 +93,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		if (renewal) {
 			return renewal(list, entityType, new Client(), busType, null);
 		}
-		return sendData(list, entityType, new Client(), busType, requireSysColumn, null, null);
+		return sendData(list, entityType, new Client(), busType, requireSysColumn, null, null, null);
 	}
 
 	@Override
@@ -103,7 +103,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		if (renewal) {
 			return renewal(list, entityType, new Client(), busType, null);
 		}
-		return sendData(list, entityType, new Client(), busType, requireSysColumn, null, null);
+		return sendData(list, entityType, new Client(), busType, requireSysColumn, null, null, null);
 	}
 
 	@Override
@@ -111,7 +111,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		if (renewal) {
 			return renewal(list, entityType, new Client(url), busType, null);
 		}
-		return sendData(list, entityType, new Client(url), busType, requireSysColumn, null, null);
+		return sendData(list, entityType, new Client(url), busType, requireSysColumn, null, null, null);
 	}
 
 	@Override
@@ -121,7 +121,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		if (renewal) {
 			return renewal(list, entityType, new Client(url), busType, null);
 		}
-		return sendData(list, entityType, new Client(url), busType, requireSysColumn, null, null);
+		return sendData(list, entityType, new Client(url), busType, requireSysColumn, null, null, null);
 	}
 
 	@Override
@@ -129,7 +129,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		if (renewal) {
 			return renewal(list, entityType, new Client(), busType, null);
 		}
-		return sendData(list, entityType, new Client(), busType, requireSysColumn, extraFileList, null);
+		return sendData(list, entityType, new Client(), busType, requireSysColumn, null, extraFileList, null);
 	}
 
 	@Override
@@ -139,7 +139,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		if (renewal) {
 			return renewal(list, entityType, new Client(), busType, null);
 		}
-		return sendData(list, entityType, new Client(), busType, requireSysColumn, extraFileList, null);
+		return sendData(list, entityType, new Client(), busType, requireSysColumn, null, extraFileList, null);
 	}
 
 	@Override
@@ -147,7 +147,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		if (renewal) {
 			return renewal(list, entityType, new Client(url), busType, null);
 		}
-		return sendData(list, entityType, new Client(url), busType, requireSysColumn, extraFileList, null);
+		return sendData(list, entityType, new Client(url), busType, requireSysColumn, null, extraFileList, null);
 	}
 
 	@Override
@@ -157,7 +157,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		if (renewal) {
 			return renewal(list, entityType, new Client(url), busType, null);
 		}
-		return sendData(list, entityType, new Client(url), busType, requireSysColumn, extraFileList, null);
+		return sendData(list, entityType, new Client(url), busType, requireSysColumn, null, extraFileList, null);
 	}
 
 	@Override
@@ -187,7 +187,8 @@ public class TransmissionServiceImpl implements TransmissionService {
 			return renewal(list, transEntity.getEntityType(), client, transEntity.getBusType(), transEntity.getTriggerName());
 		}
 		// 新的传输
-		return sendData(list, transEntity.getEntityType(), client, transEntity.getBusType(), transEntity.isRequireSysColumn(), extraFileList, transEntity.getTriggerName());
+		return sendData(list, transEntity.getEntityType(), client, transEntity.getBusType(), transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(), extraFileList,
+				transEntity.getTriggerName());
 	}
 
 	@Override
@@ -219,7 +220,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		}
 
 		// 生成json数据
-		JSONObject table = jsonTableBuilder(list, transEntity.getEntityType(), this.fileList, transEntity.isRequireSysColumn());
+		JSONObject table = jsonTableBuilder(list, transEntity.getEntityType(), this.fileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr());
 
 		// 加入批处理列表中
 		this.tables.add(table);
@@ -328,7 +329,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		List<File> fileList = ListUtils.newArrayList();
 		try {
 			// 生成json数据
-			JSONObject json = jsonTableBuilder(list, transEntity.getEntityType(), fileList, transEntity.isRequireSysColumn());
+			JSONObject json = jsonTableBuilder(list, transEntity.getEntityType(), fileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr());
 			// 将所有要传输的数据压缩成压缩包
 			buildZip(extraFileList, tempPath, jsonPath, jsonFileName, zipName, fileList, json.toJSONString());
 			// 下载
@@ -616,7 +617,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			String jsonPath = tempPath + File.separator + "json";
 			String jsonFileName = jsonPath + File.separator + transEntity.getBusType() + ".json";
 			String zipName = tempPath + File.separator + appUri + transEntity.getBusType() + ".zip";
-			JSONObject json = jsonTableBuilder4Push(list, transEntity.getEntityType(), fileList, transEntity.isRequireSysColumn());
+			JSONObject json = jsonTableBuilder4Push(list, transEntity.getEntityType(), fileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr());
 			System.out.println(json);
 			buildZip(transEntity.getExtraFileList(), tempPath, jsonPath, jsonFileName, zipName, fileList, json.toJSONString());
 			// 记录待拉取的标识
@@ -640,7 +641,8 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 重新传输数据
 	 */
-	private <T extends DataEntity<?>> Result sendData(List<T> list, Class<T> entityType, Client client, String busType, boolean requireSysColumn, List<ExtraFile> extraFileList, String triggerName) {
+	private <T extends DataEntity<?>> Result sendData(List<T> list, Class<T> entityType, Client client, String busType, boolean requireSysColumn, String[] requireSysColumnArr,
+			List<ExtraFile> extraFileList, String triggerName) {
 		// 重新传输前先删除之前的临时文件
 		System.out.println("删除上次传输残留的文件");
 		this.cleanHistoryData(busType, client);
@@ -657,7 +659,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		List<File> fileList = ListUtils.newArrayList();
 		try {
 			// 生成json数据字符串和收集报送的附件
-			JSONObject json = jsonTableBuilder(list, entityType, fileList, requireSysColumn);
+			JSONObject json = jsonTableBuilder(list, entityType, fileList, requireSysColumn, requireSysColumnArr);
 			System.out.println(json);
 			buildZip(extraFileList, tempPath, jsonPath, jsonFileName, zipName, fileList, json.toJSONString());
 			// 将zip文件拆分成若干小块
@@ -761,7 +763,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 解析集合，生成报送json
 	 */
-	private <T extends DataEntity<?>> JSONObject jsonTableBuilder(List<T> list, Class<T> entityType, List<File> fileList, boolean requireSysColumn) throws Exception {
+	private <T extends DataEntity<?>> JSONObject jsonTableBuilder(List<T> list, Class<T> entityType, List<File> fileList, boolean requireSysColumn, String[] requireSysColumnArr) throws Exception {
 		JSONObject table = new JSONObject();
 		JSONArray rows = new JSONArray();
 		String tableName = "";
@@ -772,7 +774,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		}
 		table.put("table", tableName);
 		for (DataEntity<?> entity : list) {
-			rows.add(jsonRowBuilder(entity, fileList, requireSysColumn));
+			rows.add(jsonRowBuilder(entity, fileList, requireSysColumn, requireSysColumnArr));
 		}
 		table.put("rows", rows);
 		return table;
@@ -781,7 +783,8 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 解析集合，生成推送json
 	 */
-	private <T extends DataEntity<?>> JSONObject jsonTableBuilder4Push(List<T> list, Class<T> entityType, List<File> fileList, boolean requireSysColumn) throws Exception {
+	private <T extends DataEntity<?>> JSONObject jsonTableBuilder4Push(List<T> list, Class<T> entityType, List<File> fileList, boolean requireSysColumn, String[] requireSysColumnArr)
+			throws Exception {
 		JSONObject table = new JSONObject();
 		JSONArray rows = new JSONArray();
 		String tableName = "";
@@ -792,7 +795,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		}
 		table.put("table", tableName);
 		for (DataEntity<?> entity : list) {
-			rows.add(jsonRowBuilder4Push(entity, fileList, requireSysColumn));
+			rows.add(jsonRowBuilder4Push(entity, fileList, requireSysColumn, requireSysColumnArr));
 		}
 		table.put("rows", rows);
 		return table;
@@ -801,7 +804,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 解析实体，生成报送json
 	 */
-	private <T extends DataEntity<?>> JSONObject jsonRowBuilder(T entity, List<File> fileList, boolean requireSysColumn) throws Exception {
+	private <T extends DataEntity<?>> JSONObject jsonRowBuilder(T entity, List<File> fileList, boolean requireSysColumn, String[] requireSysColumnArr) throws Exception {
 		// 拼接表数据json
 		// 设置主键
 		JSONObject row = new JSONObject();
@@ -899,40 +902,89 @@ public class TransmissionServiceImpl implements TransmissionService {
 			String createBy = entity.getCreateBy();
 			String updateBy = entity.getUpdateBy();
 			String status = entity.getStatus();
-			if (createDate != null) {
-				JSONObject createDateJson = new JSONObject();
-				createDateJson.put("to", "create_date");
-				createDateJson.put("value", createDate);
-				createDateJson.put("type", "date");
-				rowData.add(createDateJson);
-			}
-			if (updateDate != null) {
-				JSONObject updateDateJson = new JSONObject();
-				updateDateJson.put("to", "update_date");
-				updateDateJson.put("value", updateDate);
-				updateDateJson.put("type", "date");
-				rowData.add(updateDateJson);
+			if (StringUtils.isNotBlank(status)) {
+				JSONObject statusJson = new JSONObject();
+				statusJson.put("to", Constant.SysCoumn.STATUS);
+				statusJson.put("value", status);
+				statusJson.put("type", "string");
+				rowData.add(statusJson);
 			}
 			if (StringUtils.isNotBlank(createBy)) {
 				JSONObject createByJson = new JSONObject();
-				createByJson.put("to", "create_by");
+				createByJson.put("to", Constant.SysCoumn.CREATE_BY);
 				createByJson.put("value", createBy);
 				createByJson.put("type", "string");
 				rowData.add(createByJson);
 			}
+			if (createDate != null) {
+				JSONObject createDateJson = new JSONObject();
+				createDateJson.put("to", Constant.SysCoumn.CREATE_DATE);
+				createDateJson.put("value", createDate);
+				createDateJson.put("type", "date");
+				rowData.add(createDateJson);
+			}
 			if (StringUtils.isNotBlank(updateBy)) {
 				JSONObject updateByJson = new JSONObject();
-				updateByJson.put("to", "update_by");
+				updateByJson.put("to", Constant.SysCoumn.UPDATE_BY);
 				updateByJson.put("value", updateBy);
 				updateByJson.put("type", "string");
 				rowData.add(updateByJson);
 			}
-			if (StringUtils.isNotBlank(status)) {
-				JSONObject statusJson = new JSONObject();
-				statusJson.put("to", "status");
-				statusJson.put("value", status);
-				statusJson.put("type", "string");
-				rowData.add(statusJson);
+			if (updateDate != null) {
+				JSONObject updateDateJson = new JSONObject();
+				updateDateJson.put("to", Constant.SysCoumn.UPDATE_DATE);
+				updateDateJson.put("value", updateDate);
+				updateDateJson.put("type", "date");
+				rowData.add(updateDateJson);
+			}
+		} else if (requireSysColumnArr != null) {
+			for (String columnName : requireSysColumnArr) {
+				if (columnName.equals(Constant.SysCoumn.STATUS)) {
+					String status = entity.getStatus();
+					if (StringUtils.isNotBlank(status)) {
+						JSONObject statusJson = new JSONObject();
+						statusJson.put("to", Constant.SysCoumn.STATUS);
+						statusJson.put("value", status);
+						statusJson.put("type", "string");
+						rowData.add(statusJson);
+					}
+				} else if (columnName.equals(Constant.SysCoumn.CREATE_BY)) {
+					String createBy = entity.getCreateBy();
+					if (StringUtils.isNotBlank(createBy)) {
+						JSONObject createByJson = new JSONObject();
+						createByJson.put("to", Constant.SysCoumn.CREATE_BY);
+						createByJson.put("value", createBy);
+						createByJson.put("type", "string");
+						rowData.add(createByJson);
+					}
+				} else if (columnName.equals(Constant.SysCoumn.CREATE_DATE)) {
+					Date createDate = entity.getCreateDate();
+					if (createDate != null) {
+						JSONObject createDateJson = new JSONObject();
+						createDateJson.put("to", "create_date");
+						createDateJson.put("value", createDate);
+						createDateJson.put("type", "date");
+						rowData.add(createDateJson);
+					}
+				} else if (columnName.equals(Constant.SysCoumn.UPDATE_BY)) {
+					String updateBy = entity.getUpdateBy();
+					if (StringUtils.isNotBlank(updateBy)) {
+						JSONObject updateByJson = new JSONObject();
+						updateByJson.put("to", Constant.SysCoumn.UPDATE_BY);
+						updateByJson.put("value", updateBy);
+						updateByJson.put("type", "string");
+						rowData.add(updateByJson);
+					}
+				} else if (columnName.equals(Constant.SysCoumn.UPDATE_DATE)) {
+					Date updateDate = entity.getUpdateDate();
+					if (updateDate != null) {
+						JSONObject updateDateJson = new JSONObject();
+						updateDateJson.put("to", Constant.SysCoumn.UPDATE_DATE);
+						updateDateJson.put("value", updateDate);
+						updateDateJson.put("type", "date");
+						rowData.add(updateDateJson);
+					}
+				}
 			}
 		}
 
@@ -964,7 +1016,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 解析实体，生成报送json
 	 */
-	private <T extends DataEntity<?>> JSONObject jsonRowBuilder4Push(T entity, List<File> fileList, boolean requireSysColumn) throws Exception {
+	private <T extends DataEntity<?>> JSONObject jsonRowBuilder4Push(T entity, List<File> fileList, boolean requireSysColumn, String[] requireSysColumnArr) throws Exception {
 		// 拼接表数据json
 		// 设置主键
 		JSONObject row = new JSONObject();
@@ -1062,40 +1114,89 @@ public class TransmissionServiceImpl implements TransmissionService {
 			String createBy = entity.getCreateBy();
 			String updateBy = entity.getUpdateBy();
 			String status = entity.getStatus();
-			if (createDate != null) {
-				JSONObject createDateJson = new JSONObject();
-				createDateJson.put("to", "create_date");
-				createDateJson.put("value", createDate);
-				createDateJson.put("type", "date");
-				rowData.add(createDateJson);
-			}
-			if (updateDate != null) {
-				JSONObject updateDateJson = new JSONObject();
-				updateDateJson.put("to", "update_date");
-				updateDateJson.put("value", updateDate);
-				updateDateJson.put("type", "date");
-				rowData.add(updateDateJson);
+			if (StringUtils.isNotBlank(status)) {
+				JSONObject statusJson = new JSONObject();
+				statusJson.put("to", Constant.SysCoumn.STATUS);
+				statusJson.put("value", status);
+				statusJson.put("type", "string");
+				rowData.add(statusJson);
 			}
 			if (StringUtils.isNotBlank(createBy)) {
 				JSONObject createByJson = new JSONObject();
-				createByJson.put("to", "create_by");
+				createByJson.put("to", Constant.SysCoumn.CREATE_BY);
 				createByJson.put("value", createBy);
 				createByJson.put("type", "string");
 				rowData.add(createByJson);
 			}
+			if (createDate != null) {
+				JSONObject createDateJson = new JSONObject();
+				createDateJson.put("to", Constant.SysCoumn.CREATE_DATE);
+				createDateJson.put("value", createDate);
+				createDateJson.put("type", "date");
+				rowData.add(createDateJson);
+			}
 			if (StringUtils.isNotBlank(updateBy)) {
 				JSONObject updateByJson = new JSONObject();
-				updateByJson.put("to", "update_by");
+				updateByJson.put("to", Constant.SysCoumn.UPDATE_BY);
 				updateByJson.put("value", updateBy);
 				updateByJson.put("type", "string");
 				rowData.add(updateByJson);
 			}
-			if (StringUtils.isNotBlank(status)) {
-				JSONObject statusJson = new JSONObject();
-				statusJson.put("to", "status");
-				statusJson.put("value", status);
-				statusJson.put("type", "string");
-				rowData.add(statusJson);
+			if (updateDate != null) {
+				JSONObject updateDateJson = new JSONObject();
+				updateDateJson.put("to", Constant.SysCoumn.UPDATE_DATE);
+				updateDateJson.put("value", updateDate);
+				updateDateJson.put("type", "date");
+				rowData.add(updateDateJson);
+			}
+		} else if (requireSysColumnArr != null) {
+			for (String columnName : requireSysColumnArr) {
+				if (columnName.equals(Constant.SysCoumn.STATUS)) {
+					String status = entity.getStatus();
+					if (StringUtils.isNotBlank(status)) {
+						JSONObject statusJson = new JSONObject();
+						statusJson.put("to", Constant.SysCoumn.STATUS);
+						statusJson.put("value", status);
+						statusJson.put("type", "string");
+						rowData.add(statusJson);
+					}
+				} else if (columnName.equals(Constant.SysCoumn.CREATE_BY)) {
+					String createBy = entity.getCreateBy();
+					if (StringUtils.isNotBlank(createBy)) {
+						JSONObject createByJson = new JSONObject();
+						createByJson.put("to", Constant.SysCoumn.CREATE_BY);
+						createByJson.put("value", createBy);
+						createByJson.put("type", "string");
+						rowData.add(createByJson);
+					}
+				} else if (columnName.equals(Constant.SysCoumn.CREATE_DATE)) {
+					Date createDate = entity.getCreateDate();
+					if (createDate != null) {
+						JSONObject createDateJson = new JSONObject();
+						createDateJson.put("to", "create_date");
+						createDateJson.put("value", createDate);
+						createDateJson.put("type", "date");
+						rowData.add(createDateJson);
+					}
+				} else if (columnName.equals(Constant.SysCoumn.UPDATE_BY)) {
+					String updateBy = entity.getUpdateBy();
+					if (StringUtils.isNotBlank(updateBy)) {
+						JSONObject updateByJson = new JSONObject();
+						updateByJson.put("to", Constant.SysCoumn.UPDATE_BY);
+						updateByJson.put("value", updateBy);
+						updateByJson.put("type", "string");
+						rowData.add(updateByJson);
+					}
+				} else if (columnName.equals(Constant.SysCoumn.UPDATE_DATE)) {
+					Date updateDate = entity.getUpdateDate();
+					if (updateDate != null) {
+						JSONObject updateDateJson = new JSONObject();
+						updateDateJson.put("to", Constant.SysCoumn.UPDATE_DATE);
+						updateDateJson.put("value", updateDate);
+						updateDateJson.put("type", "date");
+						rowData.add(updateDateJson);
+					}
+				}
 			}
 		}
 
