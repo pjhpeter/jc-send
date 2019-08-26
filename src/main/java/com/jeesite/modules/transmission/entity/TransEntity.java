@@ -7,7 +7,9 @@ import com.jeesite.common.entity.DataEntity;
 import com.jeesite.modules.transmission.util.Constant;
 
 /**
- * 传输接口参数实体 参数说明： list 需要传输的对象集合，传输多个对象时使用（不能与entity并用）
+ * 传输接口参数实体 参数说明： 
+ * 
+ * list 需要传输的对象集合，传输多个对象时使用（不能与entity并用）
  * 
  * entity 需要传输的单个对象，传输单个对象时使用（不能与list并用）
  * 
@@ -19,6 +21,8 @@ import com.jeesite.modules.transmission.util.Constant;
  * renewal 是否断点续传，默认false
  * 
  * requireSysColumn 是否需要传输系统的5个字段（status,create_date.....），默认false
+ * 
+ * requireSysColumnArr 如果系统的5个字段只传输其中一部分的话，在这里设置，如只用了create_date和update_date，{create_date,update_date}
  * 
  * extraFileList 额外要传输的文件列表，有需要额外传输的文件，这些文件不存在于附件中，比如跳过系统上传组件自动生成的文件，需要传如此参数
  * 
@@ -40,6 +44,7 @@ public class TransEntity<T extends DataEntity<?>> implements Serializable {
 	private String busType;
 	private boolean renewal = false;
 	private boolean requireSysColumn = false;
+	private String[] requireSysColumnArr;
 	private List<ExtraFile> extraFileList;
 	private ExtraFile extraFile;
 	private String triggerName = Constant.HAS_NO_TRIGGER;
@@ -98,6 +103,14 @@ public class TransEntity<T extends DataEntity<?>> implements Serializable {
 
 	public void setRequireSysColumn(boolean requireSysColumn) {
 		this.requireSysColumn = requireSysColumn;
+	}
+
+	public String[] getRequireSysColumnArr() {
+		return requireSysColumnArr;
+	}
+
+	public void setRequireSysColumnArr(String[] requireSysColumnArr) {
+		this.requireSysColumnArr = requireSysColumnArr;
 	}
 
 	public List<ExtraFile> getExtraFileList() {
