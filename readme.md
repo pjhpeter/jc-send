@@ -70,7 +70,7 @@ public class UnitSecpostCheck extends DataEntity<UnitSecpostCheck> {
 	private Date writingDate;		
 	@SendField(isPK = true)
 	private Date confirmDate;
-	@SendField
+	@SendField(to = "current_user")//当接收端和推送端对应的数据库字段命名不一致时可以加上这个to
 	private String writingUser;		
 	@SendField
 	private Integer isSure;		
@@ -141,7 +141,7 @@ public class UnitSecpostDetermineBook extends DataEntity<UnitSecpostDetermineBoo
 	private String unitSecpostItemId;
 	@PushField
 	private Integer year;
-	@PushField
+	@PushField(to = "unit_id")//当接收端和推送端对应的数据库字段命名不一致时可以加上这个to
 	private String unitCode;
 	@PushField
 	private String designation;
