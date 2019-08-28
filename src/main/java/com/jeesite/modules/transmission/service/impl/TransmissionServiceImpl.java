@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -90,78 +89,6 @@ public class TransmissionServiceImpl implements TransmissionService {
 	private List<ExtraFile> extraFileList;
 
 	@Override
-	public <T extends DataEntity<?>> Result clientSend(List<T> list, Class<T> entityType, String busType, boolean renewal, boolean requireSysColumn) {
-		if (renewal) {
-			return renewal(new Client(), busType, null);
-		}
-		return sendData(list, entityType, new Client(), busType, requireSysColumn, null, null, null);
-	}
-
-	@Override
-	public <T extends DataEntity<?>> Result clientSend(T entity, Class<T> entityType, String busType, boolean renewal, boolean requireSysColumn) {
-		ArrayList<T> list = ListUtils.newArrayList();
-		list.add(entity);
-		if (renewal) {
-			return renewal(new Client(), busType, null);
-		}
-		return sendData(list, entityType, new Client(), busType, requireSysColumn, null, null, null);
-	}
-
-	@Override
-	public <T extends DataEntity<?>> Result clientSend(List<T> list, Class<T> entityType, String url, String busType, boolean renewal, boolean requireSysColumn) {
-		if (renewal) {
-			return renewal(new Client(url), busType, null);
-		}
-		return sendData(list, entityType, new Client(url), busType, requireSysColumn, null, null, null);
-	}
-
-	@Override
-	public <T extends DataEntity<?>> Result clientSend(T entity, Class<T> entityType, String url, String busType, boolean renewal, boolean requireSysColumn) {
-		ArrayList<T> list = ListUtils.newArrayList();
-		list.add(entity);
-		if (renewal) {
-			return renewal(new Client(url), busType, null);
-		}
-		return sendData(list, entityType, new Client(url), busType, requireSysColumn, null, null, null);
-	}
-
-	@Override
-	public <T extends DataEntity<?>> Result clientSend(List<T> list, Class<T> entityType, String busType, boolean renewal, boolean requireSysColumn, List<ExtraFile> extraFileList) {
-		if (renewal) {
-			return renewal(new Client(), busType, null);
-		}
-		return sendData(list, entityType, new Client(), busType, requireSysColumn, null, extraFileList, null);
-	}
-
-	@Override
-	public <T extends DataEntity<?>> Result clientSend(T entity, Class<T> entityType, String busType, boolean renewal, boolean requireSysColumn, List<ExtraFile> extraFileList) {
-		ArrayList<T> list = ListUtils.newArrayList();
-		list.add(entity);
-		if (renewal) {
-			return renewal(new Client(), busType, null);
-		}
-		return sendData(list, entityType, new Client(), busType, requireSysColumn, null, extraFileList, null);
-	}
-
-	@Override
-	public <T extends DataEntity<?>> Result clientSend(List<T> list, Class<T> entityType, String url, String busType, boolean renewal, boolean requireSysColumn, List<ExtraFile> extraFileList) {
-		if (renewal) {
-			return renewal(new Client(url), busType, null);
-		}
-		return sendData(list, entityType, new Client(url), busType, requireSysColumn, null, extraFileList, null);
-	}
-
-	@Override
-	public <T extends DataEntity<?>> Result clientSend(T entity, Class<T> entityType, String url, String busType, boolean renewal, boolean requireSysColumn, List<ExtraFile> extraFileList) {
-		ArrayList<T> list = ListUtils.newArrayList();
-		list.add(entity);
-		if (renewal) {
-			return renewal(new Client(url), busType, null);
-		}
-		return sendData(list, entityType, new Client(url), busType, requireSysColumn, null, extraFileList, null);
-	}
-
-	@Override
 	public <T extends DataEntity<?>> Result clientSend(TransEntity<T> transEntity) {
 		List<T> list = null;
 		Client client = null;
@@ -188,8 +115,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			return renewal(client, transEntity.getBusType(), transEntity.getTriggerName());
 		}
 		// 新的传输
-		return sendData(list, transEntity.getEntityType(), client, transEntity.getBusType(), transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(), extraFileList,
-				transEntity.getTriggerName());
+		return sendData(transEntity, client);
 	}
 
 	@Override
@@ -221,7 +147,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		}
 
 		// 生成json数据
-		JSONObject table = jsonTableBuilder(list, transEntity.getEntityType(), this.fileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr());
+		JSONObject table = jsonTableBuilder(list, transEntity.getEntityType(), this.fileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(), transEntity.getExtraStr());
 
 		// 加入批处理列表中
 		this.tables.add(table);
@@ -347,7 +273,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		List<File> fileList = ListUtils.newArrayList();
 		try {
 			// 生成json数据
-			JSONObject json = jsonTableBuilder(list, transEntity.getEntityType(), fileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr());
+			JSONObject json = jsonTableBuilder(list, transEntity.getEntityType(), fileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(), transEntity.getExtraStr());
 			// 将所有要传输的数据压缩成压缩包
 			buildZip(extraFileList, tempPath, jsonPath, jsonFileName, zipName, fileList, json.toJSONString());
 			// 下载
@@ -448,12 +374,12 @@ public class TransmissionServiceImpl implements TransmissionService {
 		// 解压
 		FileUtils.unZipFiles(targetFileName, unZipDir);
 		try {
-			JSONArray rows = doAnalysis(unZipDir, jsonFileName);
+			JSONArray tables = doAnalysis(unZipDir, jsonFileName);
 			if (!triggerName.equals(Constant.HAS_NO_TRIGGER)) {
 				// 执行触发器
 				@SuppressWarnings("static-access")
 				ReceiveTrigger trigger = (ReceiveTrigger) springContextsUtil.getBean(triggerName);
-				trigger.run(rows, busType);
+				trigger.run(tables, busType);
 			}
 			return new Result(true, Constant.Message.解析成功);
 		} catch (Exception e) {
@@ -642,7 +568,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			String jsonPath = busTypeTempPath + File.separator + "json";
 			String jsonFileName = jsonPath + File.separator + busType + ".json";
 			String zipName = busTypeTempPath + File.separator + pullDataFlagId + "_" + busType + ".zip";
-			JSONObject json = jsonTableBuilder4Push(list, transEntity.getEntityType(), fileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr());
+			JSONObject json = jsonTableBuilder4Push(list, transEntity.getEntityType(), fileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(), transEntity.getExtraStr());
 			System.out.println(json);
 			FileUtils.createDirectory(tempPath);
 			buildZip(transEntity.getExtraFileList(), busTypeTempPath, jsonPath, jsonFileName, zipName, fileList, json.toJSONString());
@@ -661,8 +587,8 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 重新传输数据
 	 */
-	private <T extends DataEntity<?>> Result sendData(List<T> list, Class<T> entityType, Client client, String busType, boolean requireSysColumn, String[] requireSysColumnArr,
-			List<ExtraFile> extraFileList, String triggerName) {
+	private <T extends DataEntity<?>> Result sendData(TransEntity<T> transEntity, Client client) {
+		String busType = transEntity.getBusType();
 		// 重新传输前先删除之前的临时文件
 		System.out.println("删除上次传输残留的文件");
 		this.cleanHistoryData(busType, client);
@@ -679,7 +605,8 @@ public class TransmissionServiceImpl implements TransmissionService {
 		List<File> fileList = ListUtils.newArrayList();
 		try {
 			// 生成json数据字符串和收集报送的附件
-			JSONObject json = jsonTableBuilder(list, entityType, fileList, requireSysColumn, requireSysColumnArr);
+			JSONObject json = jsonTableBuilder(transEntity.getList(), transEntity.getEntityType(), fileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(),
+					transEntity.getExtraStr());
 			System.out.println(json);
 			buildZip(extraFileList, tempPath, jsonPath, jsonFileName, zipName, fileList, json.toJSONString());
 			// 将zip文件拆分成若干小块
@@ -687,7 +614,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			// 发送文件
 			transData(client, tempPath, tempFileList);
 			// 调用对方的解析文件接口
-			result = analysisData(busType, client, triggerName);
+			result = analysisData(busType, client, transEntity.getTriggerName());
 		} catch (Exception e) {
 			e.printStackTrace();
 			result = new Result(false, e.getMessage());
@@ -783,7 +710,8 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 解析集合，生成报送json
 	 */
-	private <T extends DataEntity<?>> JSONObject jsonTableBuilder(List<T> list, Class<T> entityType, List<File> fileList, boolean requireSysColumn, String[] requireSysColumnArr) throws Exception {
+	private <T extends DataEntity<?>> JSONObject jsonTableBuilder(List<T> list, Class<T> entityType, List<File> fileList, boolean requireSysColumn, String[] requireSysColumnArr, String extraStr)
+			throws Exception {
 		JSONObject table = new JSONObject();
 		JSONArray rows = new JSONArray();
 		String tableName = "";
@@ -797,13 +725,19 @@ public class TransmissionServiceImpl implements TransmissionService {
 			rows.add(jsonRowBuilder(entity, fileList, requireSysColumn, requireSysColumnArr));
 		}
 		table.put("rows", rows);
+
+		// 额外传输字符串
+		if (StringUtils.isNotBlank(extraStr)) {
+			table.put("extraStr", extraStr);
+		}
+
 		return table;
 	}
 
 	/*
 	 * 解析集合，生成推送json
 	 */
-	private <T extends DataEntity<?>> JSONObject jsonTableBuilder4Push(List<T> list, Class<T> entityType, List<File> fileList, boolean requireSysColumn, String[] requireSysColumnArr)
+	private <T extends DataEntity<?>> JSONObject jsonTableBuilder4Push(List<T> list, Class<T> entityType, List<File> fileList, boolean requireSysColumn, String[] requireSysColumnArr, String extraStr)
 			throws Exception {
 		JSONObject table = new JSONObject();
 		JSONArray rows = new JSONArray();
@@ -818,6 +752,12 @@ public class TransmissionServiceImpl implements TransmissionService {
 			rows.add(jsonRowBuilder4Push(entity, fileList, requireSysColumn, requireSysColumnArr));
 		}
 		table.put("rows", rows);
+
+		// 额外传输字符串
+		if (StringUtils.isNotBlank(extraStr)) {
+			table.put("extraStr", extraStr);
+		}
+
 		return table;
 	}
 
@@ -1313,11 +1253,11 @@ public class TransmissionServiceImpl implements TransmissionService {
 		String aesStr = FileUtils.readFileToString(new File(unZipDir + File.separator + jsonFileName), "UTF-8");
 		String jsonStr = AesUtils.decode(aesStr, Constant.FILE_KEY);
 		System.out.println(jsonStr);
-		JSONObject jsonObj = JSON.parseObject(jsonStr);
+		JSONObject table = JSON.parseObject(jsonStr);
 		// 数据库表名
-		String tableName = jsonObj.getString("table");
+		String tableName = table.getString("table");
 		// 行数据json
-		JSONArray rows = jsonObj.getJSONArray("rows");
+		JSONArray rows = table.getJSONArray("rows");
 		// 数据库数据和附件文件
 		this.dataBaseHandler.setData(tableName, rows, unZipDir);
 		// 处理额外传输文件
@@ -1340,7 +1280,11 @@ public class TransmissionServiceImpl implements TransmissionService {
 		}
 		// 提交数据
 		this.dataBaseHandler.commit();
-		return rows;
+
+		// 返回表json，为了与批量处理统一，所以用JSONArray
+		JSONArray tables = new JSONArray();
+		tables.add(table);
+		return tables;
 	}
 
 	/*
@@ -1353,8 +1297,8 @@ public class TransmissionServiceImpl implements TransmissionService {
 		System.out.println(jsonStr);
 
 		// 解析json数据
-		JSONArray jsonArr = JSON.parseArray(jsonStr);
-		for (Object object : jsonArr) {
+		JSONArray tables = JSON.parseArray(jsonStr);
+		for (Object object : tables) {
 			JSONObject jsonObj = JSON.parseObject(object.toString());
 			// 数据库表名
 			String tableName = jsonObj.getString("table");
@@ -1386,7 +1330,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		// 提交数据
 		this.dataBaseHandler.commit();
 
-		return jsonArr;
+		return tables;
 	}
 
 	/*

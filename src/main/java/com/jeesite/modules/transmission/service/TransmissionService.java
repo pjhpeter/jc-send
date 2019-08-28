@@ -1,14 +1,11 @@
 package com.jeesite.modules.transmission.service;
 
-import java.util.List;
-
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.springframework.web.multipart.MultipartFile;
 
 import com.jeesite.common.entity.DataEntity;
-import com.jeesite.modules.transmission.entity.ExtraFile;
 import com.jeesite.modules.transmission.entity.Result;
 import com.jeesite.modules.transmission.entity.TransEntity;
 
@@ -19,157 +16,6 @@ import com.jeesite.modules.transmission.entity.TransEntity;
  *
  */
 public interface TransmissionService {
-	/**
-	 * 发送多个对象数据，地址默认读取参数设置中的send.url参数的值
-	 * 
-	 * @param list
-	 *            需要报送的实体对象列表
-	 * @param entityType
-	 *            实体类
-	 * @param busType
-	 *            业务类型，用于记录这次数据传输是哪个业务，随意定义
-	 * @param renewal
-	 *            是否断点续传
-	 * @param requireSysColumn
-	 *            是否报送系统默认的5列(create_date.....)
-	 * @return 结果
-	 */
-	<T extends DataEntity<?>> Result clientSend(List<T> list, Class<T> entityType, String busType, boolean renewal, boolean requireSysColumn);
-
-	/**
-	 * 发送单个对象数据，地址默认读取参数设置中的send.url参数的值
-	 * 
-	 * @param entity
-	 *            需要报送的实体对象
-	 * @param entityType
-	 *            实体类
-	 * @param busType
-	 *            业务类型，用于记录这次数据传输是哪个业务，随意定义
-	 * @param renewal
-	 *            是否断点续传
-	 * @param requireSysColumn
-	 *            是否报送系统默认的5列(create_date.....)
-	 * @return 结果
-	 */
-	<T extends DataEntity<?>> Result clientSend(T entity, Class<T> entityType, String busType, boolean renewal, boolean requireSysColumn);
-
-	/**
-	 * 发送多个对象数据，地址为传入参数url的值
-	 * 
-	 * @param list
-	 *            需要报送的实体对象列表
-	 * @param entityType
-	 *            实体类
-	 * @param url
-	 *            发送目标地址
-	 * @param busType
-	 *            业务类型，用于记录这次数据传输是哪个业务，随意定义
-	 * @param renewal
-	 *            是否断点续传
-	 * @param requireSysColumn
-	 *            是否报送系统默认的5列(create_date.....)
-	 * @return 结果
-	 */
-	<T extends DataEntity<?>> Result clientSend(List<T> list, Class<T> entityType, String url, String busType, boolean renewal, boolean requireSysColumn);
-
-	/**
-	 * 发送单个对象数据，地址为传入参数url的值
-	 * 
-	 * @param entity
-	 *            需要报送的实体对象
-	 * @param entityType
-	 *            实体类
-	 * @param url
-	 *            发送目标地址
-	 * @param busType
-	 *            业务类型，用于记录这次数据传输是哪个业务，随意定义
-	 * @param renewal
-	 *            是否断点续传
-	 * @param requireSysColumn
-	 *            是否报送系统默认的5列(create_date.....)
-	 * @return 响应结果
-	 */
-	<T extends DataEntity<?>> Result clientSend(T entity, Class<T> entityType, String url, String busType, boolean renewal, boolean requireSysColumn);
-
-	/**
-	 * 发送多个对象数据，有需要额外传输的文件，这些文件不存在于附件中，比如跳过系统上传组件自动生成的文件，地址默认读取参数设置中的send.url参数的值
-	 * 
-	 * @param list
-	 *            需要报送的实体对象列表
-	 * @param entityType
-	 *            实体类
-	 * @param busType
-	 *            业务类型，用于记录这次数据传输是哪个业务，随意定义
-	 * @param renewal
-	 *            是否断点续传
-	 * @param requireSysColumn
-	 *            是否报送系统默认的5列(create_date.....)
-	 * @param extraFileList
-	 *            额外要传输的文件列表
-	 * @return 结果
-	 */
-	<T extends DataEntity<?>> Result clientSend(List<T> list, Class<T> entityType, String busType, boolean renewal, boolean requireSysColumn, List<ExtraFile> extraFileList);
-
-	/**
-	 * 发送单个对象数据，有需要额外传输的文件，这些文件不存在于附件中，比如跳过系统上传组件自动生成的文件，地址默认读取参数设置中的send.url参数的值
-	 * 
-	 * @param entity
-	 *            需要报送的实体对象
-	 * @param entityType
-	 *            实体类
-	 * @param busType
-	 *            业务类型，用于记录这次数据传输是哪个业务，随意定义
-	 * @param renewal
-	 *            是否断点续传
-	 * @param requireSysColumn
-	 *            是否报送系统默认的5列(create_date.....)
-	 * @param extraFileList
-	 *            额外要传输的文件列表
-	 * @return 结果
-	 */
-	<T extends DataEntity<?>> Result clientSend(T entity, Class<T> entityType, String busType, boolean renewal, boolean requireSysColumn, List<ExtraFile> extraFileList);
-
-	/**
-	 * 发送多个对象数据，有需要额外传输的文件，这些文件不存在于附件中，比如跳过系统上传组件自动生成的文件，地址为传入参数url的值
-	 * 
-	 * @param list
-	 *            需要报送的实体对象列表
-	 * @param entityType
-	 *            实体类
-	 * @param url
-	 *            发送目标地址
-	 * @param busType
-	 *            业务类型，用于记录这次数据传输是哪个业务，随意定义
-	 * @param renewal
-	 *            是否断点续传
-	 * @param requireSysColumn
-	 *            是否报送系统默认的5列(create_date.....)
-	 * @param extraFileList
-	 *            额外要传输的文件列表
-	 * @return 结果
-	 */
-	<T extends DataEntity<?>> Result clientSend(List<T> list, Class<T> entityType, String url, String busType, boolean renewal, boolean requireSysColumn, List<ExtraFile> extraFileList);
-
-	/**
-	 * 发送单个对象数据，有需要额外传输的文件，这些文件不存在于附件中，比如跳过系统上传组件自动生成的文件，地址为传入参数url的值
-	 * 
-	 * @param entity
-	 *            需要报送的实体对象
-	 * @param entityType
-	 *            实体类
-	 * @param url
-	 *            发送目标地址
-	 * @param busType
-	 *            业务类型，用于记录这次数据传输是哪个业务，随意定义
-	 * @param renewal
-	 *            是否断点续传
-	 * @param requireSysColumn
-	 *            是否报送系统默认的5列(create_date.....)
-	 * @param extraFileList
-	 *            额外要传输的文件列表
-	 * @return 响应结果
-	 */
-	<T extends DataEntity<?>> Result clientSend(T entity, Class<T> entityType, String url, String busType, boolean renewal, boolean requireSysColumn, List<ExtraFile> extraFileList);
 
 	/**
 	 * 数据传输

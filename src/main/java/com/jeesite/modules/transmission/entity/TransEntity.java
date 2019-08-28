@@ -28,6 +28,8 @@ import com.jeesite.modules.transmission.util.Constant;
  * 
  * extraFile 单个额外要传输的文件，有需要额外传输的文件，这些文件不存在于附件中，比如跳过系统上传组件自动生成的文件，需要传如此参数
  * 
+ * extraStr 需要外传输的信息，随便任何格式的字符串，但是自动解析并不会处理这个字符串，需要在接收端用触发器处理
+ * 
  * triggerName 触发器注入名称，一般为类名首字母小写后的字符串，用于数据传输完成后，在接收端需要执行的一些业务逻辑，触发器类需要在接收端写好，实现ReceiveTrigger接口
  * 
  * @author 彭嘉辉
@@ -47,6 +49,7 @@ public class TransEntity<T extends DataEntity<?>> implements Serializable {
 	private String[] requireSysColumnArr;
 	private List<ExtraFile> extraFileList;
 	private ExtraFile extraFile;
+	private String extraStr;
 	private String triggerName = Constant.HAS_NO_TRIGGER;
 
 	public List<T> getList() {
@@ -127,6 +130,14 @@ public class TransEntity<T extends DataEntity<?>> implements Serializable {
 
 	public void setExtraFile(ExtraFile extraFile) {
 		this.extraFile = extraFile;
+	}
+
+	public String getExtraStr() {
+		return extraStr;
+	}
+
+	public void setExtraStr(String extraStr) {
+		this.extraStr = extraStr;
 	}
 
 	public String getTriggerName() {
