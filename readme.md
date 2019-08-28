@@ -24,10 +24,10 @@ CREATE TABLE trans_temp_file (
 
 -- 有可被拉取数据的标识
 CREATE TABLE trans_pull_data_flag(
+	id VARCHAR(64) PRIMARY KEY,
 	app_uri VARCHAR(50),-- 应用唯一标识
 	bus_type VARCHAR(100),-- 业务类型
-	rows_json_str text,-- 待拉取的数据
-	PRIMARY KEY(app_uri,bus_type)
+	rows_json_str text-- 待拉取的数据
 );
 ```  
 也可以在jc-send.jar里面找到tables.sql执行  
@@ -210,9 +210,14 @@ transmissionService.importData(file, "SbosMemberSecbook");
 transmissionService.addTransBatch(transEntity1);
 transmissionService.addTransBatch(transEntity2);
 
+boolean renewal = false;
 //transFlag是传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
 //url是接收方的地址，如192.168.6.1:8080/sbos，如果为空默认读取参数配的send.url的值，其他应该都懂啦，我就不说了
-Result result = transmissionService.clientSendBatch(transFlag, url, "testTrigger");
+if (transmissionService.clientHasRenewal(transFlag)) {// 看看有没有断点续传
+	renewal = true;
+}
+Result result = transmissionService.clientSendBatch(transFlag, renewal, null, "testTrigger");
+System.out.println(result);
 ```
 ## 离线的
 ```
@@ -437,19 +442,20 @@ public interface TransmissionService {
 	 */
 	<T extends DataEntity<?>> void addTransBatch(TransEntity<T> transEntity) throws Exception;
 
-	/**
+    /**
 	 * 执行批量传输
 	 * 
 	 * @param transFlag
 	 *            传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
+	 * @param renewal
+	 *            是否断点续传
 	 * @param url
-	 *            接收方的地址，如192.168.6.1:8080/sbos
+	 *            接收方的地址，如192.168.6.1:8080/sbos，如果为空默认读取参数配的send.url的值
 	 * @param triggerName
 	 *            触发器注入名称，一般为类名首字母小写后的字符串，用于数据传输完成后，在接收端需要执行的一些业务逻辑，触发器类需要在接收端写好，实现ReceiveTrigger接口
-	 * 
 	 * @return 结果
 	 */
-	Result clientSendBatch(String transFlag, String url, String triggerName);
+	Result clientSendBatch(String transFlag, boolean renewal, String url, String triggerName);
 
 	/**
 	 * 检测当前业务类型是否存在可断点续传的数据
