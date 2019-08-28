@@ -91,7 +91,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	@Override
 	public <T extends DataEntity<?>> Result clientSend(List<T> list, Class<T> entityType, String busType, boolean renewal, boolean requireSysColumn) {
 		if (renewal) {
-			return renewal(list, entityType, new Client(), busType, null);
+			return renewal(new Client(), busType, null);
 		}
 		return sendData(list, entityType, new Client(), busType, requireSysColumn, null, null, null);
 	}
@@ -101,7 +101,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		ArrayList<T> list = ListUtils.newArrayList();
 		list.add(entity);
 		if (renewal) {
-			return renewal(list, entityType, new Client(), busType, null);
+			return renewal(new Client(), busType, null);
 		}
 		return sendData(list, entityType, new Client(), busType, requireSysColumn, null, null, null);
 	}
@@ -109,7 +109,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	@Override
 	public <T extends DataEntity<?>> Result clientSend(List<T> list, Class<T> entityType, String url, String busType, boolean renewal, boolean requireSysColumn) {
 		if (renewal) {
-			return renewal(list, entityType, new Client(url), busType, null);
+			return renewal(new Client(url), busType, null);
 		}
 		return sendData(list, entityType, new Client(url), busType, requireSysColumn, null, null, null);
 	}
@@ -119,7 +119,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		ArrayList<T> list = ListUtils.newArrayList();
 		list.add(entity);
 		if (renewal) {
-			return renewal(list, entityType, new Client(url), busType, null);
+			return renewal(new Client(url), busType, null);
 		}
 		return sendData(list, entityType, new Client(url), busType, requireSysColumn, null, null, null);
 	}
@@ -127,7 +127,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	@Override
 	public <T extends DataEntity<?>> Result clientSend(List<T> list, Class<T> entityType, String busType, boolean renewal, boolean requireSysColumn, List<ExtraFile> extraFileList) {
 		if (renewal) {
-			return renewal(list, entityType, new Client(), busType, null);
+			return renewal(new Client(), busType, null);
 		}
 		return sendData(list, entityType, new Client(), busType, requireSysColumn, null, extraFileList, null);
 	}
@@ -137,7 +137,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		ArrayList<T> list = ListUtils.newArrayList();
 		list.add(entity);
 		if (renewal) {
-			return renewal(list, entityType, new Client(), busType, null);
+			return renewal(new Client(), busType, null);
 		}
 		return sendData(list, entityType, new Client(), busType, requireSysColumn, null, extraFileList, null);
 	}
@@ -145,7 +145,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	@Override
 	public <T extends DataEntity<?>> Result clientSend(List<T> list, Class<T> entityType, String url, String busType, boolean renewal, boolean requireSysColumn, List<ExtraFile> extraFileList) {
 		if (renewal) {
-			return renewal(list, entityType, new Client(url), busType, null);
+			return renewal(new Client(url), busType, null);
 		}
 		return sendData(list, entityType, new Client(url), busType, requireSysColumn, null, extraFileList, null);
 	}
@@ -155,7 +155,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		ArrayList<T> list = ListUtils.newArrayList();
 		list.add(entity);
 		if (renewal) {
-			return renewal(list, entityType, new Client(url), busType, null);
+			return renewal(new Client(url), busType, null);
 		}
 		return sendData(list, entityType, new Client(url), busType, requireSysColumn, null, extraFileList, null);
 	}
@@ -184,7 +184,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		}
 		if (transEntity.isRenewal()) {
 			// 断点续传
-			return renewal(list, transEntity.getEntityType(), client, transEntity.getBusType(), transEntity.getTriggerName());
+			return renewal(client, transEntity.getBusType(), transEntity.getTriggerName());
 		}
 		// 新的传输
 		return sendData(list, transEntity.getEntityType(), client, transEntity.getBusType(), transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(), extraFileList,
@@ -230,7 +230,20 @@ public class TransmissionServiceImpl implements TransmissionService {
 	}
 
 	@Override
-	public Result clientSendBatch(String transFlag, String url, String triggerName) {
+	public Result clientSendBatch(String transFlag, boolean renewal, String url, String triggerName) {
+		// 传输数据
+		Client client = null;
+		if (StringUtils.isNotBlank(url)) {
+			client = new Client(url);
+		} else {
+			client = new Client();
+		}
+
+		// 断点续传
+		if (renewal) {
+			return renewal(client, triggerName, triggerName);
+		}
+
 		// 临时目录
 		String tempPath = Global.getUserfilesBaseDir(Constant.TemplDir.SEND_TEMP + transFlag);
 		// 应用唯一标识
@@ -246,13 +259,6 @@ public class TransmissionServiceImpl implements TransmissionService {
 		// 分割压缩包文件
 		List<TempFile> tempFileList = this.fileHandler.splitFile(zipName, transFlag);
 
-		// 传输数据
-		Client client = null;
-		if (StringUtils.isNotBlank(url)) {
-			client = new Client(url);
-		} else {
-			client = new Client();
-		}
 		transData(client, tempPath, tempFileList);
 
 		// 传输成功后调用接收方数据解析接口
@@ -714,7 +720,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 断点续传
 	 */
-	private <T extends DataEntity<?>> Result renewal(List<T> list, Class<T> entityType, Client client, String busType, String triggerName) {
+	private <T extends DataEntity<?>> Result renewal(Client client, String busType, String triggerName) {
 		// 获取临时文件信息
 		TempFile entity = new TempFile();
 		entity.setBusType(busType);
