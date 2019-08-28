@@ -98,6 +98,11 @@ transEntity.setExtraFileList(extraFileList);
 
 // 如果报送完数据之后，需要在接收端执行一些业务代码的话可以这样，当然前提是接收端那边有一个叫TestTrigger（这个名字随便起的，不要到时满大街的TestTrigger哟(°ー°〃)）的触发器哦，不然就搞笑咧^_^
 transEntity.setTriggerName("testTrigger");//这里给的是触发器的spring容器里的id，注解注入的话一般默认类名首字母小写
+		
+if(transmissionService.clientHasRenewal(busType)) {// 判断是否可以断点续传
+	transEntity.setRenewal(true);
+}
+
 // 调用报送接口
 Result result = transmissionService.clientSend(transEntity);
 System.out.println(result);
