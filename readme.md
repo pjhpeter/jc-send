@@ -96,6 +96,9 @@ extraFileList.add(new ExtraFile("temp", "20180105金立手机官网设设计提�
 extraFileList.add(new ExtraFile("temp", "20180727福特STA数字化平台-视觉风格提案.pdf"));
 transEntity.setExtraFileList(extraFileList);
 
+// 如果有额外传输的数据就加这个，任意格式的字符串，但是接口只负责传过去，并不会自动解析，需要触发器解析
+transEntity.setExtraStr("{\"msg\" : \"哈哈\"}");
+
 // 如果报送完数据之后，需要在接收端执行一些业务代码的话可以这样，当然前提是接收端那边有一个叫TestTrigger（这个名字随便起的，不要到时满大街的TestTrigger哟(°ー°〃)）的触发器哦，不然就搞笑咧^_^
 transEntity.setTriggerName("testTrigger");//这里给的是触发器的spring容器里的id，注解注入的话一般默认类名首字母小写
 		
@@ -231,7 +234,7 @@ transmissionService.addTransBatch(transEntity2);
 transmissionService.exportBatch(transFlag, exportFileName, request, response);
 ```
 # API说明  
-想看就看吧 (￣_,￣ )  
+最好看一下吧，不然很多东西不知道哦 (￣_,￣ )  
 ## TransEntity
 ```
 /**
@@ -255,6 +258,8 @@ transmissionService.exportBatch(transFlag, exportFileName, request, response);
  * extraFileList 额外要传输的文件列表，有需要额外传输的文件，这些文件不存在于附件中，比如跳过系统上传组件自动生成的文件，需要传如此参数
  * 
  * extraFile 单个额外要传输的文件，有需要额外传输的文件，这些文件不存在于附件中，比如跳过系统上传组件自动生成的文件，需要传如此参数
+ * 
+ * extraStr 需要外传输的信息，随便任何格式的字符串，但是自动解析并不会处理这个字符串，需要在接收端用触发器处理
  * 
  * triggerName 触发器注入名称，一般为类名首字母小写后的字符串，用于数据传输完成后，在接收端需要执行的一些业务逻辑，触发器类需要在接收端写好，实现ReceiveTrigger接口
  * 
