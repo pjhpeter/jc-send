@@ -29,6 +29,7 @@ import com.jeesite.common.codec.AesUtils;
 import com.jeesite.common.collect.ListUtils;
 import com.jeesite.common.config.Global;
 import com.jeesite.common.entity.DataEntity;
+import com.jeesite.common.idgen.IdGen;
 import com.jeesite.common.io.FileUtils;
 import com.jeesite.common.mapper.JsonMapper;
 import com.jeesite.common.mybatis.annotation.Table;
@@ -283,19 +284,30 @@ public class TransmissionServiceImpl implements TransmissionService {
 				triggerName = Constant.HAS_NO_TRIGGER;
 			}
 			// 拉取数据
-			Result pullResult = client.pull(busType, triggerName);
+			Result pullResult = client.pull(busType);
 			if (pullResult.isSuccess()) {
 				// 解析数据
-				String pullFileDir = Global.getUserfilesBaseDir(Constant.TemplDir.PULL_TEMP);
+				String pullFileDir = Global.getUserfilesBaseDir(Constant.TemplDir.PULL_TEMP + "_" + busType);
 				String pullFileName = busType + ".zip";
 				String unZipDir = pullFileDir + File.separator + busType;
 				FileUtils.unZipFiles(pullFileDir + File.separator + pullFileName, pullFileDir + File.separator + busType);
 				try {
-					doAnalysis(unZipDir, busType + ".json");
+					File unZipDirFile = new File(unZipDir);
+					File[] listFiles = unZipDirFile.listFiles();
+					for (File file : listFiles) {
+						String descFileName = unZipDir + File.separator + file.getName().substring(0, file.getName().lastIndexOf(".") + 1);
+						FileUtils.unZipFiles(file.getAbsolutePath(), descFileName);
+						doAnalysis(descFileName, busType + ".json");
+					}
+					// 清除推送端的临时文件
+					cleanPushTempFile(busType, triggerName, client);
 					return new Result(true, Constant.Message.拉取成功);
 				} catch (Exception e) {
 					e.printStackTrace();
 					return new Result(false, Constant.Message.拉取失败);
+				} finally {
+					// 删除临时文件
+					FileUtils.deleteQuietly(new File(pullFileDir));
 				}
 			} else {
 				return new Result(false, pullResult.getMsg());
@@ -550,7 +562,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	 * @return 是否
 	 */
 	public boolean serverHasPullData(String appUri, String busType) {
-		long count = pullDataFlagService.findCount(new PullDataFlag(appUri, busType, null));
+		long count = pullDataFlagService.findCount(new PullDataFlag(null, appUri, busType, null));
 		if (count > 0) {
 			return true;
 		}
@@ -570,11 +582,13 @@ public class TransmissionServiceImpl implements TransmissionService {
 	 *            响应对象
 	 */
 	public void serverPull(String appUri, String busType, HttpServletRequest request, HttpServletResponse response) {
-		PullDataFlag pullDataFlag = pullDataFlagService.get(new PullDataFlag(appUri, busType, null));
-		if (pullDataFlag != null) {
-			String tempFileDir = Global.getUserfilesBaseDir(Constant.TemplDir.WEIT_FOR_PULL_TEMP);
-			String tempFileName = appUri + busType + ".zip";
-			FileUtils.downFile(new File(tempFileDir + File.separator + tempFileName), request, response);
+		List<PullDataFlag> pullDataFlagList = pullDataFlagService.findList(new PullDataFlag(null, appUri, busType, null));
+		String tempFileDir = Global.getUserfilesBaseDir(Constant.TemplDir.WEIT_FOR_PULL_TEMP);
+		String pullDir = tempFileDir + File.separator + appUri + busType;
+		String pullFileName = tempFileDir + File.separator + appUri + busType + ".zip";
+		if (pullDataFlagList.size() > 0) {
+			FileUtils.zipFiles(pullDir, "*", pullFileName);
+			FileUtils.downFile(new File(pullFileName), request, response);
 		}
 	}
 
@@ -590,8 +604,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	 * @return 响应结果
 	 */
 	public Result serverCleanPullFile(String appUri, String busType, String triggerName) {
-		PullDataFlag pullDataFlag = new PullDataFlag(appUri, busType, null);
-		pullDataFlag = pullDataFlagService.get(pullDataFlag);
+		PullDataFlag pullDataFlag = new PullDataFlag(null, appUri, busType, null);
 		// 调用这个接口说明拉取已经成功，执行拉取成功的触发器
 		if (!triggerName.equals(Constant.HAS_NO_TRIGGER)) {
 			@SuppressWarnings("static-access")
@@ -601,9 +614,12 @@ public class TransmissionServiceImpl implements TransmissionService {
 		// 删除待拉取的临时文件
 		String tempFileDir = Global.getUserfilesBaseDir(Constant.TemplDir.WEIT_FOR_PULL_TEMP);
 		String tempFileName = appUri + busType + ".zip";
-		if (FileUtils.deleteFile(tempFileDir + File.separator + tempFileName)) {
+		if (FileUtils.deleteFile(tempFileDir + File.separator + tempFileName) && FileUtils.deleteQuietly(new File(tempFileDir + File.separator + appUri + busType))) {
 			// 删除数据库记录
-			pullDataFlagService.delete(pullDataFlag);
+			List<PullDataFlag> pullDataFlagList = pullDataFlagService.findList(pullDataFlag);
+			for (PullDataFlag pullDataFlag2 : pullDataFlagList) {
+				pullDataFlagService.delete(pullDataFlag2);
+			}
 			return new Result(true, "删除待拉取的临时文件成功");
 		}
 		return new Result(false, "删除待拉取的临时文件失败");
@@ -619,22 +635,20 @@ public class TransmissionServiceImpl implements TransmissionService {
 			list = transEntity.getList();
 		}
 		try {
+			String pullDataFlagId = IdGen.nextId();
+			String busType = transEntity.getBusType();
 			String tempPath = Global.getUserfilesBaseDir(Constant.TemplDir.WEIT_FOR_PULL_TEMP);
-			String jsonPath = tempPath + File.separator + "json";
-			String jsonFileName = jsonPath + File.separator + transEntity.getBusType() + ".json";
-			String zipName = tempPath + File.separator + appUri + transEntity.getBusType() + ".zip";
+			String busTypeTempPath = tempPath + File.separator + appUri + busType;
+			String jsonPath = busTypeTempPath + File.separator + "json";
+			String jsonFileName = jsonPath + File.separator + busType + ".json";
+			String zipName = busTypeTempPath + File.separator + pullDataFlagId + "_" + busType + ".zip";
 			JSONObject json = jsonTableBuilder4Push(list, transEntity.getEntityType(), fileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr());
 			System.out.println(json);
-			buildZip(transEntity.getExtraFileList(), tempPath, jsonPath, jsonFileName, zipName, fileList, json.toJSONString());
+			FileUtils.createDirectory(tempPath);
+			buildZip(transEntity.getExtraFileList(), busTypeTempPath, jsonPath, jsonFileName, zipName, fileList, json.toJSONString());
 			// 记录待拉取的标识
-			PullDataFlag entity = new PullDataFlag(appUri, transEntity.getBusType(), json.getJSONArray("rows").toJSONString());
-			try {
-				// 新增
-				entity.setIsNewRecord(true);
-			} catch (Exception e) {
-				// 更新
-				entity.setIsNewRecord(false);
-			}
+			PullDataFlag entity = new PullDataFlag(pullDataFlagId, appUri, transEntity.getBusType(), json.getJSONArray("rows").toJSONString());
+			entity.setIsNewRecord(true);
 			pullDataFlagService.save(entity);
 			FileUtils.deleteQuietly(new File(jsonPath));
 			return new Result(true, Constant.Message.推送成功);
@@ -1281,17 +1295,14 @@ public class TransmissionServiceImpl implements TransmissionService {
 	 * 检测是否有可拉取的数据
 	 */
 	private boolean checkPullData(String busType, Client client) {
-		try {
-			Result result = client.hasPullData(busType);
-			return result.isSuccess();
-		} catch (NullPointerException e) {
-			try {
-				throw new Exception(Constant.Message.服务没响应);
-			} catch (Exception e1) {
-				e1.printStackTrace();
-				return false;
-			}
-		}
+		return client.hasPullData(busType).isSuccess();
+	}
+
+	/*
+	 * 清除推送的临时文件
+	 */
+	private boolean cleanPushTempFile(String busType, String triggerName, Client client) {
+		return client.cleanPushTempFile(busType, triggerName).isSuccess();
 	}
 
 	/*
