@@ -1,6 +1,6 @@
 # 前言  
 这个接口是基于jeesite的，不懂jeesite的就不要往下看了，先劝退一波  
-设计场景是这样的，一个中心端，多个单位端，还可以有一些特殊端，比如像军工项目有个将服务窗口端的，单位端和特殊端可以向中心端发送数据。如果中心端的数据要到单位端或特殊端，是由单位端或特殊端来从中心端拉取数据，总之中心端永远不会主动向单位端和特殊端推送数据的，因为他最牛的┗|｀O′|┛ 嗷~~  
+设计场景是这样的，一个中心端，多个单位端，还可以有一些特殊端，比如像军工项目有个叫服务窗口端的，单位端和特殊端可以向中心端发送数据。如果中心端的数据要到单位端或特殊端，是由单位端或特殊端来从中心端拉取数据，总之中心端永远不会主动向单位端和特殊端推送数据的，因为他最牛的┗|｀O′|┛ 嗷~~  
 # 1.导包  
 ```  
 <!-- 报送模块 -->
@@ -95,6 +95,9 @@ extraFileList.add(new ExtraFile("temp", "11-27疫苗全称追溯平台方案(1).
 extraFileList.add(new ExtraFile("temp", "20180105金立手机官网设设计提案.pdf"));
 extraFileList.add(new ExtraFile("temp", "20180727福特STA数字化平台-视觉风格提案.pdf"));
 transEntity.setExtraFileList(extraFileList);
+
+// 如果有额外传输的数据就加这个，任意格式的字符串，但是接口只负责传过去，并不会自动解析，需要触发器解析
+transEntity.setExtraStr("{\"msg\" : \"哈哈\"}");
 
 // 如果报送完数据之后，需要在接收端执行一些业务代码的话可以这样，当然前提是接收端那边有一个叫TestTrigger（这个名字随便起的，不要到时满大街的TestTrigger哟(°ー°〃)）的触发器哦，不然就搞笑咧^_^
 transEntity.setTriggerName("testTrigger");//这里给的是触发器的spring容器里的id，注解注入的话一般默认类名首字母小写
@@ -231,7 +234,7 @@ transmissionService.addTransBatch(transEntity2);
 transmissionService.exportBatch(transFlag, exportFileName, request, response);
 ```
 # API说明  
-想看就看吧 (￣_,￣ )  
+最好看一下吧，不然很多东西不知道哦 (￣_,￣ )  
 ## TransEntity
 ```
 /**
@@ -256,6 +259,8 @@ transmissionService.exportBatch(transFlag, exportFileName, request, response);
  * 
  * extraFile 单个额外要传输的文件，有需要额外传输的文件，这些文件不存在于附件中，比如跳过系统上传组件自动生成的文件，需要传如此参数
  * 
+ * extraStr 需要外传输的信息，随便任何格式的字符串，但是自动解析并不会处理这个字符串，需要在接收端用触发器处理
+ * 
  * triggerName 触发器注入名称，一般为类名首字母小写后的字符串，用于数据传输完成后，在接收端需要执行的一些业务逻辑，触发器类需要在接收端写好，实现ReceiveTrigger接口
  * 
  * @author 彭嘉辉
@@ -272,159 +277,7 @@ public class TransEntity<T extends DataEntity<?>> implements Serializable {}
  *
  */
 public interface TransmissionService {
-	/**
-	 * 发送多个对象数据，地址默认读取参数设置中的send.url参数的值
-	 * 
-	 * @param list
-	 *            需要报送的实体对象列表
-	 * @param entityType
-	 *            实体类
-	 * @param busType
-	 *            业务类型，用于记录这次数据传输是哪个业务，随意定义
-	 * @param renewal
-	 *            是否断点续传
-	 * @param requireSysColumn
-	 *            是否报送系统默认的5列(create_date.....)
-	 * @return 结果
-	 */
-	<T extends DataEntity<?>> Result clientSend(List<T> list, Class<T> entityType, String busType, boolean renewal, boolean requireSysColumn);
-
-	/**
-	 * 发送单个对象数据，地址默认读取参数设置中的send.url参数的值
-	 * 
-	 * @param entity
-	 *            需要报送的实体对象
-	 * @param entityType
-	 *            实体类
-	 * @param busType
-	 *            业务类型，用于记录这次数据传输是哪个业务，随意定义
-	 * @param renewal
-	 *            是否断点续传
-	 * @param requireSysColumn
-	 *            是否报送系统默认的5列(create_date.....)
-	 * @return 结果
-	 */
-	<T extends DataEntity<?>> Result clientSend(T entity, Class<T> entityType, String busType, boolean renewal, boolean requireSysColumn);
-
-	/**
-	 * 发送多个对象数据，地址为传入参数url的值
-	 * 
-	 * @param list
-	 *            需要报送的实体对象列表
-	 * @param entityType
-	 *            实体类
-	 * @param url
-	 *            发送目标地址
-	 * @param busType
-	 *            业务类型，用于记录这次数据传输是哪个业务，随意定义
-	 * @param renewal
-	 *            是否断点续传
-	 * @param requireSysColumn
-	 *            是否报送系统默认的5列(create_date.....)
-	 * @return 结果
-	 */
-	<T extends DataEntity<?>> Result clientSend(List<T> list, Class<T> entityType, String url, String busType, boolean renewal, boolean requireSysColumn);
-
-	/**
-	 * 发送单个对象数据，地址为传入参数url的值
-	 * 
-	 * @param entity
-	 *            需要报送的实体对象
-	 * @param entityType
-	 *            实体类
-	 * @param url
-	 *            发送目标地址
-	 * @param busType
-	 *            业务类型，用于记录这次数据传输是哪个业务，随意定义
-	 * @param renewal
-	 *            是否断点续传
-	 * @param requireSysColumn
-	 *            是否报送系统默认的5列(create_date.....)
-	 * @return 响应结果
-	 */
-	<T extends DataEntity<?>> Result clientSend(T entity, Class<T> entityType, String url, String busType, boolean renewal, boolean requireSysColumn);
-
-	/**
-	 * 发送多个对象数据，有需要额外传输的文件，这些文件不存在于附件中，比如跳过系统上传组件自动生成的文件，地址默认读取参数设置中的send.url参数的值
-	 * 
-	 * @param list
-	 *            需要报送的实体对象列表
-	 * @param entityType
-	 *            实体类
-	 * @param busType
-	 *            业务类型，用于记录这次数据传输是哪个业务，随意定义
-	 * @param renewal
-	 *            是否断点续传
-	 * @param requireSysColumn
-	 *            是否报送系统默认的5列(create_date.....)
-	 * @param extraFileList
-	 *            额外要传输的文件列表
-	 * @return 结果
-	 */
-	<T extends DataEntity<?>> Result clientSend(List<T> list, Class<T> entityType, String busType, boolean renewal, boolean requireSysColumn, List<ExtraFile> extraFileList);
-
-	/**
-	 * 发送单个对象数据，有需要额外传输的文件，这些文件不存在于附件中，比如跳过系统上传组件自动生成的文件，地址默认读取参数设置中的send.url参数的值
-	 * 
-	 * @param entity
-	 *            需要报送的实体对象
-	 * @param entityType
-	 *            实体类
-	 * @param busType
-	 *            业务类型，用于记录这次数据传输是哪个业务，随意定义
-	 * @param renewal
-	 *            是否断点续传
-	 * @param requireSysColumn
-	 *            是否报送系统默认的5列(create_date.....)
-	 * @param extraFileList
-	 *            额外要传输的文件列表
-	 * @return 结果
-	 */
-	<T extends DataEntity<?>> Result clientSend(T entity, Class<T> entityType, String busType, boolean renewal, boolean requireSysColumn, List<ExtraFile> extraFileList);
-
-	/**
-	 * 发送多个对象数据，有需要额外传输的文件，这些文件不存在于附件中，比如跳过系统上传组件自动生成的文件，地址为传入参数url的值
-	 * 
-	 * @param list
-	 *            需要报送的实体对象列表
-	 * @param entityType
-	 *            实体类
-	 * @param url
-	 *            发送目标地址
-	 * @param busType
-	 *            业务类型，用于记录这次数据传输是哪个业务，随意定义
-	 * @param renewal
-	 *            是否断点续传
-	 * @param requireSysColumn
-	 *            是否报送系统默认的5列(create_date.....)
-	 * @param extraFileList
-	 *            额外要传输的文件列表
-	 * @return 结果
-	 */
-	<T extends DataEntity<?>> Result clientSend(List<T> list, Class<T> entityType, String url, String busType, boolean renewal, boolean requireSysColumn, List<ExtraFile> extraFileList);
-
-	/**
-	 * 发送单个对象数据，有需要额外传输的文件，这些文件不存在于附件中，比如跳过系统上传组件自动生成的文件，地址为传入参数url的值
-	 * 
-	 * @param entity
-	 *            需要报送的实体对象
-	 * @param entityType
-	 *            实体类
-	 * @param url
-	 *            发送目标地址
-	 * @param busType
-	 *            业务类型，用于记录这次数据传输是哪个业务，随意定义
-	 * @param renewal
-	 *            是否断点续传
-	 * @param requireSysColumn
-	 *            是否报送系统默认的5列(create_date.....)
-	 * @param extraFileList
-	 *            额外要传输的文件列表
-	 * @return 响应结果
-	 */
-	<T extends DataEntity<?>> Result clientSend(T entity, Class<T> entityType, String url, String busType, boolean renewal, boolean requireSysColumn, List<ExtraFile> extraFileList);
-
-	/**
+    /**
 	 * 数据传输
 	 * 
 	 * @param transEntity
@@ -442,7 +295,7 @@ public interface TransmissionService {
 	 */
 	<T extends DataEntity<?>> void addTransBatch(TransEntity<T> transEntity) throws Exception;
 
-    /**
+	/**
 	 * 执行批量传输
 	 * 
 	 * @param transFlag
