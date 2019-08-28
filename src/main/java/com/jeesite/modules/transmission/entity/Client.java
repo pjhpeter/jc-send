@@ -159,11 +159,9 @@ public class Client implements Serializable {
 	 * 
 	 * @param busType
 	 *            业务类型
-	 * @param triggerName
-	 *            拉取数据成功后要执行的触发器注入名称
 	 * @return 响应结果
 	 */
-	public Result pull(String busType, String triggerName) {
+	public Result pull(String busType) {
 		// 拉取文件
 		// WebClient文件下载估计是我不会写，一直报错，用okhttp就可以了，哈哈！不过WebClient的rest写法比较好看，其他请求还是用Webclient吧
 		String url = "http://" + this.url + "/trans/pull/" + busType + "/" + AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY) + "/" + this.appUri;
@@ -177,21 +175,34 @@ public class Client implements Serializable {
 				return new Result(false, "响应码：" + response.code());
 			}
 			// 写文件
-			String pullFileDir = Global.getUserfilesBaseDir(Constant.TemplDir.PULL_TEMP);
+			String pullFileDir = Global.getUserfilesBaseDir(Constant.TemplDir.PULL_TEMP + "_" + busType);
 			FileUtils.createDirectory(pullFileDir);
 			File out = new File(pullFileDir + File.separator + busType + ".zip");
 			FileUtils.copyInputStreamToFile(response.body().byteStream(), out);
-			System.out.println("写入文件成功");
-			// 拉取成功，删除远端临时文件
-			WebClient webClient = WebClient.create("http://" + this.url);
-			System.out.println("向http://" + this.url + "发送请求");
-			Mono<String> bodyToMono = webClient.post().uri("/trans/pull_success/{busType}/{token}/{appUri}/{triggerName}", busType,
-					AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY), this.appUri, triggerName).retrieve().bodyToMono(String.class);
-			return JSON.toJavaObject(JSON.parseObject(bodyToMono.block()), Result.class);
+			System.out.println("拉取文件成功");
+			return new Result(true, "拉取成功，准备解析");
 		} catch (IOException e) {
 			e.printStackTrace();
 			return new Result(false, Constant.Message.拉取失败);
 		}
+	}
+
+	/**
+	 * 清空推送的临时文件
+	 * 
+	 * @param busType
+	 *            业务类型
+	 * @param triggerName
+	 *            拉取数据成功后要执行的触发器注入名称
+	 * @return 响应结果
+	 */
+	public Result cleanPushTempFile(String busType, String triggerName) {
+		// 拉取成功，删除远端临时文件
+		WebClient webClient = WebClient.create("http://" + this.url);
+		System.out.println("向http://" + this.url + "发送请求");
+		Mono<String> bodyToMono = webClient.post().uri("/trans/pull_success/{busType}/{token}/{appUri}/{triggerName}", busType,
+				AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY), this.appUri, triggerName).retrieve().bodyToMono(String.class);
+		return JSON.toJavaObject(JSON.parseObject(bodyToMono.block()), Result.class);
 	}
 
 }
