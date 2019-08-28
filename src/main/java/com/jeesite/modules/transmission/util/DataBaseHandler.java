@@ -49,7 +49,7 @@ public class DataBaseHandler {
 	 * 初始化
 	 */
 	private void init() throws SQLException {
-		DataSource dataSource = routingDataSource.getTargetDataSource("default");
+		DataSource dataSource = routingDataSource.getDefaultDataSource();
 		this.connection = dataSource.getConnection();
 		this.connection.setAutoCommit(false);
 		this.statement = this.connection.createStatement();
