@@ -232,6 +232,16 @@ transmissionService.addTransBatch(transEntity2);
 //exportFileName是导出后的压缩包文件名，不传默认会用busType做文件名
 //这里会下载文件哦
 transmissionService.exportBatch(transFlag, exportFileName, request, response);
+```  
+##  推送的
+```
+// 添加要批处理对象
+transmissionService.addTransBatch(transEntity1);
+transmissionService.addTransBatch(transEntity2);
+
+//transFlag是传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
+Result result = transmissionService.serverPushBatch(appUri, transFlag);
+System.out.println(result);
 ```
 # API说明  
 最好看一下吧，不然很多东西不知道哦 (￣_,￣ )  
@@ -390,6 +400,17 @@ public interface TransmissionService {
 	 * @return 结果
 	 */
 	<T extends DataEntity<?>> Result serverPush(String appUri, TransEntity<T> transEntity);
+	
+	/**
+	 * 批量推送
+	 * 
+	 * @param appUri
+	 *            接收方应用唯一标识
+	 * @param transFlag
+	 *            传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
+	 * @return 结果
+	 */
+	Result serverPushBatch(String appUri, String transFlag);
 }
 ```  
 ##### 觉得这个接口还可以的小伙伴点手关注啊，有兴趣了解的小伙伴就把代码check下来看一下吧 ヾ(￣▽￣)Bye~Bye~
