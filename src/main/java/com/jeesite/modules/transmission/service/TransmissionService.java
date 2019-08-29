@@ -130,4 +130,15 @@ public interface TransmissionService {
 	 * @return 结果
 	 */
 	<T extends DataEntity<?>> Result serverPush(String appUri, TransEntity<T> transEntity);
+
+	/**
+	 * 批量推送
+	 * 
+	 * @param appUri
+	 *            接收方应用唯一标识
+	 * @param transFlag
+	 *            传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
+	 * @return 结果
+	 */
+	Result serverPushBatch(String appUri, String transFlag);
 }

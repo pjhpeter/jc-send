@@ -112,7 +112,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		}
 		if (transEntity.isRenewal()) {
 			// 断点续传
-			return renewal(client, transEntity.getBusType(), transEntity.getTriggerName());
+			return renewal(client, transEntity.getBusType(), transEntity.getTriggerName(), false);
 		}
 		// 新的传输
 		return sendData(transEntity, client);
@@ -168,7 +168,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 
 		// 断点续传
 		if (renewal) {
-			return renewal(client, triggerName, triggerName);
+			return renewal(client, transFlag, triggerName, true);
 		}
 
 		// 临时目录
@@ -187,6 +187,9 @@ public class TransmissionServiceImpl implements TransmissionService {
 		List<TempFile> tempFileList = this.fileHandler.splitFile(zipName, transFlag);
 
 		transData(client, tempPath, tempFileList);
+
+		// 清除批处理临时变量
+		clean();
 
 		// 传输成功后调用接收方数据解析接口
 		return analysisMultiData(transFlag, client, triggerName);
@@ -350,6 +353,9 @@ public class TransmissionServiceImpl implements TransmissionService {
 
 		// 删除临时文件
 		FileUtils.deleteQuietly(new File(tempPath));
+
+		// 清除临时变量
+		clean();
 	}
 
 	/**
@@ -584,6 +590,33 @@ public class TransmissionServiceImpl implements TransmissionService {
 		}
 	}
 
+	@Override
+	public Result serverPushBatch(String appUri, String transFlag) {
+		try {
+			String pullDataFlagId = IdGen.nextId();
+			String tempPath = Global.getUserfilesBaseDir(Constant.TemplDir.WEIT_FOR_PULL_TEMP);
+			String busTypeTempPath = tempPath + File.separator + appUri + transFlag;
+			String jsonPath = busTypeTempPath + File.separator + "json";
+			String jsonFileName = jsonPath + File.separator + transFlag + ".json";
+			String zipName = busTypeTempPath + File.separator + pullDataFlagId + "_" + transFlag + ".zip";
+			System.out.println(this.tables);
+			FileUtils.createDirectory(tempPath);
+			buildZip(this.extraFileList, busTypeTempPath, jsonPath, jsonFileName, zipName, this.fileList, this.tables.toJSONString());
+			// 记录待拉取的标识
+			PullDataFlag entity = new PullDataFlag(pullDataFlagId, appUri, transFlag, this.tables.toJSONString());
+			entity.setIsNewRecord(true);
+			pullDataFlagService.save(entity);
+			FileUtils.deleteQuietly(new File(jsonPath));
+			return new Result(true, Constant.Message.推送成功);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new Result(false, Constant.Message.推送失败);
+		} finally {
+			// 情况临时变量
+			clean();
+		}
+	}
+
 	/*
 	 * 重新传输数据
 	 */
@@ -608,7 +641,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			JSONObject json = jsonTableBuilder(transEntity.getList(), transEntity.getEntityType(), fileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(),
 					transEntity.getExtraStr());
 			System.out.println(json);
-			buildZip(extraFileList, tempPath, jsonPath, jsonFileName, zipName, fileList, json.toJSONString());
+			buildZip(transEntity.getExtraFileList(), tempPath, jsonPath, jsonFileName, zipName, fileList, json.toJSONString());
 			// 将zip文件拆分成若干小块
 			List<TempFile> tempFileList = fileHandler.splitFile(zipName, busType);
 			// 发送文件
@@ -661,7 +694,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 断点续传
 	 */
-	private <T extends DataEntity<?>> Result renewal(Client client, String busType, String triggerName) {
+	private <T extends DataEntity<?>> Result renewal(Client client, String busType, String triggerName, boolean isMulti) {
 		// 获取临时文件信息
 		TempFile entity = new TempFile();
 		entity.setBusType(busType);
@@ -672,8 +705,14 @@ public class TransmissionServiceImpl implements TransmissionService {
 			// 发送文件
 			transData(client, tempPath, tempFileList);
 			// 调用对方的解析文件接口
-			if (analysisData(busType, client, triggerName).isSuccess()) {
-				return new Result(true, Constant.Message.传输成功);
+			if (isMulti) {// 是否批量传输
+				if (analysisMultiData(busType, client, triggerName).isSuccess()) {
+					return new Result(true, Constant.Message.传输成功);
+				}
+			} else {
+				if (analysisData(busType, client, triggerName).isSuccess()) {
+					return new Result(true, Constant.Message.传输成功);
+				}
 			}
 			return new Result(false, Constant.Message.传输失败);
 		}
@@ -1331,6 +1370,15 @@ public class TransmissionServiceImpl implements TransmissionService {
 		this.dataBaseHandler.commit();
 
 		return tables;
+	}
+
+	/*
+	 * 清除临时变量
+	 */
+	private void clean() {
+		this.fileList = null;
+		this.extraFileList = null;
+		this.tables = null;
 	}
 
 	/*
