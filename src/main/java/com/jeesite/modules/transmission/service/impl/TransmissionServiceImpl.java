@@ -223,14 +223,15 @@ public class TransmissionServiceImpl implements TransmissionService {
 				try {
 					File unZipDirFile = new File(unZipDir);
 					File[] listFiles = unZipDirFile.listFiles();
+					JSONArray tables = new JSONArray();
 					for (File file : listFiles) {
 						String descFileName = unZipDir + File.separator + file.getName().substring(0, file.getName().lastIndexOf(".") + 1);
 						FileUtils.unZipFiles(file.getAbsolutePath(), descFileName);
-						doAnalysis(descFileName, busType + ".json");
+						tables.addAll(doAnalysisMulti(descFileName, busType + ".json"));
 					}
 					// 清除推送端的临时文件
 					cleanPushTempFile(busType, triggerName, client);
-					return new Result(true, Constant.Message.拉取成功);
+					return new Result(true, Constant.Message.拉取成功, tables.toJSONString());
 				} catch (Exception e) {
 					e.printStackTrace();
 					return new Result(false, Constant.Message.拉取失败);
@@ -301,8 +302,8 @@ public class TransmissionServiceImpl implements TransmissionService {
 			// 解压
 			FileUtils.unZipFiles(zipName, unZipDir);
 			// 解析数据
-			doAnalysis(unZipDir, jsonFileName);
-			return new Result(true, Constant.Message.导入成功);
+			JSONArray tables = doAnalysis(unZipDir, jsonFileName);
+			return new Result(true, Constant.Message.导入成功, tables.toJSONString());
 		} catch (Exception e) {
 			e.printStackTrace();
 			return new Result(false, Constant.Message.导入失败);
@@ -322,8 +323,8 @@ public class TransmissionServiceImpl implements TransmissionService {
 			// 解压
 			FileUtils.unZipFiles(zipName, unZipDir);
 			// 解析数据
-			doAnalysisMulti(unZipDir, jsonFileName);
-			return new Result(true, Constant.Message.导入成功);
+			JSONArray tables = doAnalysisMulti(unZipDir, jsonFileName);
+			return new Result(true, Constant.Message.导入成功, tables.toJSONString());
 		} catch (Exception e) {
 			e.printStackTrace();
 			return new Result(false, Constant.Message.导入失败);
@@ -574,12 +575,15 @@ public class TransmissionServiceImpl implements TransmissionService {
 			String jsonPath = busTypeTempPath + File.separator + "json";
 			String jsonFileName = jsonPath + File.separator + busType + ".json";
 			String zipName = busTypeTempPath + File.separator + pullDataFlagId + "_" + busType + ".zip";
+			JSONArray tables = new JSONArray();
 			JSONObject json = jsonTableBuilder4Push(list, transEntity.getEntityType(), fileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(), transEntity.getExtraStr());
-			System.out.println(json);
+			// 统一变成JSONArray，拉取的时候好处理
+			tables.add(json);
+			System.out.println(tables);
 			FileUtils.createDirectory(tempPath);
-			buildZip(transEntity.getExtraFileList(), busTypeTempPath, jsonPath, jsonFileName, zipName, fileList, json.toJSONString());
+			buildZip(transEntity.getExtraFileList(), busTypeTempPath, jsonPath, jsonFileName, zipName, fileList, tables.toJSONString());
 			// 记录待拉取的标识
-			PullDataFlag entity = new PullDataFlag(pullDataFlagId, appUri, transEntity.getBusType(), json.getJSONArray("rows").toJSONString());
+			PullDataFlag entity = new PullDataFlag(pullDataFlagId, appUri, transEntity.getBusType(), tables.toJSONString());
 			entity.setIsNewRecord(true);
 			pullDataFlagService.save(entity);
 			FileUtils.deleteQuietly(new File(jsonPath));
