@@ -98,9 +98,9 @@ public class TransmissionController {
 	@ResponseBody
 	public Result hasPullData(@PathVariable("busType") String busType, @PathVariable("appUri") String appUri) {
 		if (this.transmissionServiceImpl.serverHasPullData(appUri, busType)) {
-			return new Result(true, "有可拉取的数据");
+			return new Result(true, "有可拉取的数据", null);
 		}
-		return new Result(false, "无可拉取的数据");
+		return new Result(false, "无可拉取的数据", null);
 	}
 
 	/**
