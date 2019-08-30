@@ -90,14 +90,12 @@ public class TransmissionServiceImpl implements TransmissionService {
 
 	@Override
 	public <T extends DataEntity<?>> Result clientSend(TransEntity<T> transEntity) {
-		List<T> list = null;
 		Client client = null;
 		List<ExtraFile> extraFileList = null;
 		if (transEntity.getEntity() != null) {
-			list = ListUtils.newArrayList();
+			List<T> list = ListUtils.newArrayList();
 			list.add(transEntity.getEntity());
-		} else {
-			list = transEntity.getList();
+			transEntity.setList(list);
 		}
 		if (StringUtils.isNotBlank(transEntity.getUrl())) {
 			client = new Client(transEntity.getUrl());
