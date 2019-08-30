@@ -1206,22 +1206,25 @@ public class TransmissionServiceImpl implements TransmissionService {
 		row.put("rowData", rowData);
 
 		// 获取附件信息
-		FileUpload fileUpload = new FileUpload();
-		fileUpload.setBizKey(entity.getId());
-		List<FileUpload> fileUploadList = fileUploadService.findList(fileUpload);
-		if (fileUploadList.size() > 0) {
-			JSONArray fileJsonArr = new JSONArray();
-			for (FileUpload fileUploadEntity : fileUploadList) {
-				JSONObject json = JSON.parseObject(JsonMapper.toJson(fileUploadEntity));
-				fileList.add(new File(Global.getUserfilesBaseDir("fileupload") + File.separator + fileUploadEntity.getFileEntity().getFilePath() + fileUploadEntity.getFileEntity().getFileId() + "."
-						+ fileUploadEntity.getFileEntity().getFileExtension()));
-				SendFile sendFile = new SendFile();
-				sendFile.setPath(fileUploadEntity.getFileEntity().getFilePath());
-				sendFile.setFileName(fileUploadEntity.getFileEntity().getFileId() + "." + fileUploadEntity.getFileEntity().getFileExtension());
-				json.put("fileInfo", JSON.parseObject(JsonMapper.toJson(sendFile)));
-				fileJsonArr.add(json);
+		// 联合主键的情况意味着id为空，框架的附件机制并不支持联合主键，所以如果id为空则不考虑附件的处理
+		if (entity.getId() != null) {
+			FileUpload fileUpload = new FileUpload();
+			fileUpload.setBizKey(entity.getId());
+			List<FileUpload> fileUploadList = fileUploadService.findList(fileUpload);
+			if (fileUploadList.size() > 0) {
+				JSONArray fileJsonArr = new JSONArray();
+				for (FileUpload fileUploadEntity : fileUploadList) {
+					JSONObject json = JSON.parseObject(JsonMapper.toJson(fileUploadEntity));
+					fileList.add(new File(Global.getUserfilesBaseDir("fileupload") + File.separator + fileUploadEntity.getFileEntity().getFilePath() + fileUploadEntity.getFileEntity().getFileId()
+							+ "." + fileUploadEntity.getFileEntity().getFileExtension()));
+					SendFile sendFile = new SendFile();
+					sendFile.setPath(fileUploadEntity.getFileEntity().getFilePath());
+					sendFile.setFileName(fileUploadEntity.getFileEntity().getFileId() + "." + fileUploadEntity.getFileEntity().getFileExtension());
+					json.put("fileInfo", JSON.parseObject(JsonMapper.toJson(sendFile)));
+					fileJsonArr.add(json);
+				}
+				row.put("fileList", fileJsonArr);
 			}
-			row.put("fileList", fileJsonArr);
 		}
 
 		return row;
