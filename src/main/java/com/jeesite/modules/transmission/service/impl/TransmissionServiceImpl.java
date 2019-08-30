@@ -96,8 +96,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		if (transEntity.getEntity() != null) {
 			list = ListUtils.newArrayList();
 			list.add(transEntity.getEntity());
-		} else {
-			list = transEntity.getList();
+			transEntity.setList(list);
 		}
 		if (StringUtils.isNotBlank(transEntity.getUrl())) {
 			client = new Client(transEntity.getUrl());
