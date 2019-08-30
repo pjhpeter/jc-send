@@ -172,7 +172,7 @@ public class Client implements Serializable {
 		try {
 			Response response = call.execute();
 			if (!response.isSuccessful()) {
-				return new Result(false, "响应码：" + response.code());
+				return new Result(false, "响应码：" + response.code(), null);
 			}
 			// 写文件
 			String pullFileDir = Global.getUserfilesBaseDir(Constant.TemplDir.PULL_TEMP + "_" + busType);
@@ -180,10 +180,10 @@ public class Client implements Serializable {
 			File out = new File(pullFileDir + File.separator + busType + ".zip");
 			FileUtils.copyInputStreamToFile(response.body().byteStream(), out);
 			System.out.println("拉取文件成功");
-			return new Result(true, "拉取成功，准备解析");
+			return new Result(true, "拉取成功，准备解析", null);
 		} catch (IOException e) {
 			e.printStackTrace();
-			return new Result(false, Constant.Message.拉取失败);
+			return new Result(false, Constant.Message.拉取失败, null);
 		}
 	}
 
