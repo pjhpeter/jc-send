@@ -14,7 +14,8 @@
 经过上面一番思考人生，总算是把接口的雏形想明白了，这样就成功了一半啦！其实一行代码都还没有写ヽ(✿ﾟ▽ﾟ)ノ 
 
 # 开始写代码啦
-## 首先把数据拼装出来吧
+## 首先从发送数据开始吧
+### 先拼装数据
 这里让小伙伴把数据先查出来传给我，我帮忙转换成JSON，顺便把附件读出来放一起就可以啦。但是我不知道大家会给我什么对象，也不知道大家要传输的是那些字段的数据，所以这里就需要小伙伴们把要传输的字段给我标出来，然后我用反射来读那些字段的值，这里需要声明注解，还要考虑字段名不一致的问题  
 ```
 /**
@@ -96,7 +97,7 @@ public class UnitSecpostCheck extends DataEntity<UnitSecpostCheck> {
 }
 
 ```
-那么就开始吧，主要的处理都在TransmissionService接口的实现类TransmissionServiceImpl里面。
+那么就开始吧，主要的处理都在**TransmissionService**接口的实现类**TransmissionServiceImpl**里面。
 
 这里用到了一些Java的API，有了思路后，这些API都可以网上查的
 ```
@@ -212,4 +213,23 @@ if (entity.getId() != null) {
 	}
 }
 ```
-后来有发现系统的五个自带字段status、create_by、create_date、update_by、update_date有的要传，有的不要传，又要处理，搞来搞去最后就成就了这个接口最难的方法**jsonTableBuilder**和**jsonRowBuilder**
+后来有发现系统的五个自带字段status、create_by、create_date、update_by、update_date有的要传，有的不要传，又要处理，搞来搞去最后就成就了这个接口最难的方法**jsonTableBuilder**和**jsonRowBuilder**，代码就补贴了，自己去源码那里看吧。
+
+### 打包数据
+将数据打成压缩包这里没什么好说的，建各种临时目录，然后将上面生成的JSON字符串用aes加密后写到文件中，最后和一堆附件一起打包就好了，那就是**buildZip**方法了
+```
+// 加密数据
+String aesStr = AesUtils.encode(jsonStr, Constant.FILE_KEY);
+// 将json数据字符串写入文件中
+FileUtils.createDirectory(tempPath);
+FileUtils.createDirectory(jsonPath);
+FileUtils.writeToFile(jsonFileName, aesStr, true);
+// 将相关附件复制到json数据文件同目录下
+for (File file : fileList) {
+	FileUtils.copyFile(file.getAbsolutePath(), jsonPath + File.separator + file.getName());
+}
+copyExtraFile(extraFileList, jsonPath);
+// 将所有东西压缩成zip并加密
+FileUtils.createFile(zipName);
+FileUtils.zipFiles(jsonPath, "*", zipName);
+```
