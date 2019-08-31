@@ -212,4 +212,4 @@ if (entity.getId() != null) {
 	}
 }
 ```
-后来有发现系统的五个自带字段status、create_by、create_date、update_by、update_date有的要传，有的不要传，又要处理，搞来搞去最后就成就了这个接口最难的方法*jsonTableBuilder**jsonRowBuilder*
+后来有发现系统的五个自带字段status、create_by、create_date、update_by、update_date有的要传，有的不要传，又要处理，搞来搞去最后就成就了这个接口最难的方法**jsonTableBuilder**和**jsonRowBuilder**
