@@ -1018,6 +1018,7 @@ public Result serverAnalysis(String appUri, String busType, String triggerName) 
 4. 删除临时文件
 5. 后来想到接收完数据之后，接收端可能还要做一些操作，比如改状态之类的，所以多了个触发器机制
 6. 又有一些业务需要额外传文件的，所以又要处理，要求真多╮(╯_╰)╭  
+
 下面是实现的代码
 ```
 /*
@@ -1317,6 +1318,7 @@ if (!triggerName.equals(Constant.HAS_NO_TRIGGER)) {
 6. 有的话就给他拉吧
 7. 客户端拉取完成后解析拉过来的玩意儿
 8. 解析完之后向服务端发请求执行完成推送后的一系列操作，比如删除服务端的临时文件，执行触发器等等  
+
 实现代码在下面  
 两个注解  
 ```
