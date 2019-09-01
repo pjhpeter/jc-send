@@ -380,12 +380,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		FileUtils.unZipFiles(targetFileName, unZipDir);
 		try {
 			JSONArray tables = doAnalysis(unZipDir, jsonFileName);
-			if (!triggerName.equals(Constant.HAS_NO_TRIGGER)) {
-				// 执行触发器
-				@SuppressWarnings("static-access")
-				ReceiveTrigger trigger = (ReceiveTrigger) springContextsUtil.getBean(triggerName);
-				trigger.run(tables, busType);
-			}
+			excuteTrigger(busType, triggerName, tables);
 			return new Result(true, Constant.Message.解析成功);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -420,12 +415,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		try {
 			// 解析数据
 			JSONArray tables = doAnalysisMulti(unZipDir, jsonFileName);
-			if (!triggerName.equals(Constant.HAS_NO_TRIGGER)) {
-				// 执行触发器
-				@SuppressWarnings("static-access")
-				ReceiveTrigger trigger = (ReceiveTrigger) springContextsUtil.getBean(triggerName);
-				trigger.run(tables, transFlag);
-			}
+			excuteTrigger(transFlag, triggerName, tables);
 			return new Result(true, Constant.Message.解析成功);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -537,11 +527,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	public Result serverCleanPullFile(String appUri, String busType, String triggerName) {
 		PullDataFlag pullDataFlag = new PullDataFlag(null, appUri, busType, null);
 		// 调用这个接口说明拉取已经成功，执行拉取成功的触发器
-		if (!triggerName.equals(Constant.HAS_NO_TRIGGER)) {
-			@SuppressWarnings("static-access")
-			ReceiveTrigger receiveTrigger = (ReceiveTrigger) springContextsUtil.getBean(triggerName);
-			receiveTrigger.run(JSON.parseArray(pullDataFlag.getRowsJsonStr()), busType);
-		}
+		excuteTrigger(busType, triggerName, JSON.parseArray(pullDataFlag.getRowsJsonStr()));
 		// 删除待拉取的临时文件
 		String tempFileDir = Global.getUserfilesBaseDir(Constant.TemplDir.WEIT_FOR_PULL_TEMP);
 		String tempFileName = appUri + busType + ".zip";
@@ -1387,6 +1373,18 @@ public class TransmissionServiceImpl implements TransmissionService {
 		this.fileList = null;
 		this.extraFileList = null;
 		this.tables = null;
+	}
+
+	/*
+	 * 执行触发器
+	 */
+	private void excuteTrigger(String busType, String triggerName, JSONArray tables) {
+		if (!triggerName.equals(Constant.HAS_NO_TRIGGER)) {
+			// 执行触发器
+			@SuppressWarnings("static-access")
+			ReceiveTrigger trigger = (ReceiveTrigger) springContextsUtil.getBean(triggerName);
+			trigger.run(tables, busType);
+		}
 	}
 
 	/*
