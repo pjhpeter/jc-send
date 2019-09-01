@@ -214,7 +214,7 @@ if (entity.getId() != null) {
 	}
 }
 ```
-后来有发现系统的五个自带字段**status、create_by、create_date、update_by、update_date**有的要传，有的不要传，又要处理，搞来搞去最后就成就了这个接口最难的方法**jsonTableBuilder**和**jsonRowBuilder**，代码就不贴了，自己去源码那里看吧。
+后来有发现系统的五个自带字段**status、create_by、create_date、update_by、update_date**有的要传，有的不要传，又要处理，搞来搞去最后就成就了这个接口最难的方法**jsonTableBuilder**和**jsonRowBuilder**，代码就补贴了，自己去源码那里看吧。
 
 ### 打包数据
 将数据打成压缩包这里没什么好说的，建各种临时目录，然后将上面生成的JSON字符串用aes加密后写到文件中，最后和一堆附件一起打包就好了，那就是**buildZip**方法了
@@ -1306,7 +1306,168 @@ if (!triggerName.equals(Constant.HAS_NO_TRIGGER)) {
 }
 ```
 -----------------------------------------------------------终于都写完发送数据的接口说明啦-----------------------------------------------------------------
-
 ## 然后讲推送数据吧
+先走一波思路：
+1. 服务端需要在实体里面标记出哪些字段需要推送的，跟发送一样，需要用到注解
+2. 服务端把推送的数据打包好放到临时目录，等着被拉
+3. 在数据库的**trans_pull_data_flag**表中写一条临时记录
+4. 客户端发送拉取请求
+5. 服务端接收到拉取请求后，先检查**trans_pull_data_flag**有没有记录该客户端可以被拉取的数据信息
+6. 有的话就给他拉吧
+7. 客户端拉取完成后解析拉过来的玩意儿
+8. 解析完之后向服务端发请求执行完成推送后的一系列操作，比如删除服务端的临时文件，执行触发器等等  
+实现代码在下面  
+两个注解  
+```
+/**
+ * 需要推送的实体类添可加此注解，如果不添加，表名则读取Table注解的name值
+ * 
+ * @author 彭嘉辉
+ *
+ */
+@Documented
+@Target(value = { ElementType.TYPE })
+@Retention(RetentionPolicy.RUNTIME)
+public @interface PushTable {
+	/**
+	 * 接收方对应数据库表名
+	 */
+	String to();
+}
+```
+```
+/**
+ * 推送字段设置注解，成员变量设置此注解，说明该变量需要被推送
+ * 
+ * @author 彭嘉辉
+ *
+ */
+@Documented
+@Target(value = { ElementType.FIELD })
+@Retention(RetentionPolicy.RUNTIME)
+public @interface PushField {
+	/**
+	 * 接收方对应数据库列名
+	 */
+	String to() default "";
 
-
+	/**
+	 * 是否主键
+	 */
+	boolean isPK() default false;
+}
+```
+**TransmissionService**的服务端推送接口方法  
+```
+/**
+ * 推送数据
+ * 
+ * @param appUri
+ *            接收方应用唯一标识
+ * @param transEntity
+ *            传输接口参数对象
+ * @return 结果
+ */
+<T extends DataEntity<?>> Result serverPush(String appUri, TransEntity<T> transEntity);
+```
+**TransmissionServiceImpl**实现类方法  
+```
+public <T extends DataEntity<?>> Result serverPush(String appUri, TransEntity<T> transEntity) {
+	List<T> list = null;
+	List<File> fileList = ListUtils.newArrayList();
+	if (transEntity.getEntity() != null) {
+		list = ListUtils.newArrayList();
+		list.add(transEntity.getEntity());
+	} else {
+		list = transEntity.getList();
+	}
+	try {
+		String pullDataFlagId = IdGen.nextId();
+		String busType = transEntity.getBusType();
+		String tempPath = Global.getUserfilesBaseDir(Constant.TemplDir.WEIT_FOR_PULL_TEMP);
+		String busTypeTempPath = tempPath + File.separator + appUri + busType;
+		String jsonPath = busTypeTempPath + File.separator + "json";
+		String jsonFileName = jsonPath + File.separator + busType + ".json";
+		String zipName = busTypeTempPath + File.separator + pullDataFlagId + "_" + busType + ".zip";
+		JSONArray tables = new JSONArray();
+		JSONObject json = jsonTableBuilder4Push(list, transEntity.getEntityType(), fileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(), transEntity.getExtraStr());
+		// 统一变成JSONArray，拉取的时候好处理
+		tables.add(json);
+		System.out.println(tables);
+		FileUtils.createDirectory(tempPath);
+		buildZip(transEntity.getExtraFileList(), busTypeTempPath, jsonPath, jsonFileName, zipName, fileList, tables.toJSONString());
+		// 记录待拉取的标识
+		PullDataFlag entity = new PullDataFlag(pullDataFlagId, appUri, transEntity.getBusType(), tables.toJSONString());
+		entity.setIsNewRecord(true);
+		pullDataFlagService.save(entity);
+		FileUtils.deleteQuietly(new File(jsonPath));
+		return new Result(true, Constant.Message.推送成功);
+	} catch (Exception e) {
+		e.printStackTrace();
+		return new Result(false, Constant.Message.推送失败);
+	}
+}
+```
+**TransmissionService**客户端的拉取接口  
+```
+/**
+ * 向服务器拉取数据
+ * 
+ * @param busType
+ *            应用类型
+ * @param triggerName
+ *            拉取数据成功后要执行的触发器注入名称
+ * @return 结果
+ */
+Result clientPull(String busType, String triggerName);
+```
+**TransmissionServiceImpl**实现类方法  
+```
+@Override
+public Result clientPull(String busType, String triggerName) {
+	Client client = new Client();
+	if (checkPullData(busType, client)) {
+		if (StringUtils.isBlank(triggerName)) {
+			triggerName = Constant.HAS_NO_TRIGGER;
+		}
+		// 拉取数据
+		Result pullResult = client.pull(busType);
+		if (pullResult.isSuccess()) {
+			// 解析数据
+			String pullFileDir = Global.getUserfilesBaseDir(Constant.TemplDir.PULL_TEMP + "_" + busType);
+			String pullFileName = busType + ".zip";
+			String unZipDir = pullFileDir + File.separator + busType;
+			FileUtils.unZipFiles(pullFileDir + File.separator + pullFileName, pullFileDir + File.separator + busType);
+			try {
+				File unZipDirFile = new File(unZipDir);
+				File[] listFiles = unZipDirFile.listFiles();
+				JSONArray tables = new JSONArray();
+				for (File file : listFiles) {
+					String descFileName = unZipDir + File.separator + file.getName().substring(0, file.getName().lastIndexOf(".") + 1);
+					FileUtils.unZipFiles(file.getAbsolutePath(), descFileName);
+					tables.addAll(doAnalysisMulti(descFileName, busType + ".json"));
+				}
+				// 清除推送端的临时文件
+				cleanPushTempFile(busType, triggerName, client);
+				return new Result(true, Constant.Message.拉取成功, tables.toJSONString());
+			} catch (Exception e) {
+				e.printStackTrace();
+				return new Result(false, Constant.Message.拉取失败);
+			} finally {
+				// 删除临时文件
+				FileUtils.deleteQuietly(new File(pullFileDir));
+			}
+		} else {
+			return new Result(false, pullResult.getMsg());
+		}
+	}
+	return new Result(false, Constant.Message.无可拉取数据);
+}
+```
+细心的小伙伴就会发现读取数据、打包数据和解析数据的代码是完全可以复用的，其实接口做到这里，很多逻辑代码的套路都已经弄好了，接下来就是各种服用了，这里就充分体现除代码可复用性的重要啦！后面的剩下的批量处理，离线导入导出这些实现起来就变得很简单了，所以下面就偷懒不写了(￫ܫ￩)
+-------------------------------------------------------------------总结一下吧---------------------------------------------------------------
+# 总结
+其实这个接口没有什么很厉害的技术的，因为难得我也不会，都是一些基础的用法，有什么需要做的，但是技术不了解，上网看看就行了，所以最重要就是知道自己需要做什么，分析需求和理清思路最重要哦  
+接口做出来不是只是给自己用的，是给大家用的，所以不能只是自己爽就好，想怎么写就怎么写，好不好用，调用是否简单才是最总要的，这需要一颗为别人着想的心哦，小伙伴用最少的代码做最多的事情，那么自己封装的时候就要用最多的代码做最少的事情了，毕竟能量守恒嘛  
+万丈高楼平地起，每一个接口或者框架都不是一下子就做成很成熟的样子的，需要不断优化和重构的。我们也是一样哟，不断累计经验提升自己，磨练心性，成为国服程序猿还是有可能的哦  
+ヾ(￣▽￣)Bye~Bye~
