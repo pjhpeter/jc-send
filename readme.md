@@ -223,6 +223,7 @@ Result result = transmissionService.clientSendBatch(transFlag, renewal, null, "t
 System.out.println(result);
 ```
 ## 离线的
+导出  
 ```
 // 添加要批处理对象
 transmissionService.addTransBatch(transEntity1);
@@ -233,6 +234,11 @@ transmissionService.addTransBatch(transEntity2);
 //这里会下载文件哦
 transmissionService.exportBatch(transFlag, exportFileName, request, response);
 ```  
+导入  
+```
+//transFlag是传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
+transmissionService.importDataBatch(file, transFlag);
+```
 ##  推送的
 ```
 // 添加要批处理对象
