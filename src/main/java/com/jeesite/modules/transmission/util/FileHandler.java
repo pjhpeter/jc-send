@@ -92,6 +92,17 @@ public class FileHandler {
 		return returnList;
 	}
 
+	/**
+	 * 合并文件
+	 * 
+	 * @param targetFile
+	 *            合并后大文件全名
+	 * @param piceFile
+	 *            碎片文件字节流
+	 * @param point
+	 *            起始位置
+	 * @return 是否成功
+	 */
 	public boolean mergeFile(String targetFile, byte[] piceFile, long point) {
 		RandomAccessFile randomAccessFile = null;
 		try {
@@ -113,10 +124,4 @@ public class FileHandler {
 		return true;
 	}
 
-	public static void main(String[] args) {
-		// File file = new File("D:\\jeesite\\userfiles\\jsonfile\\测试1.json");
-		// System.out.println(file.getParent());
-		String str = "1566034615581.zip_0.tmp";
-		System.out.println(str.substring(str.indexOf("_") + 1, str.lastIndexOf(".")));
-	}
 }
