@@ -214,7 +214,7 @@ if (entity.getId() != null) {
 	}
 }
 ```
-后来有发现系统的五个自带字段**status、create_by、create_date、update_by、update_date**有的要传，有的不要传，又要处理，搞来搞去最后就成就了这个接口最难的方法**jsonTableBuilder**和**jsonRowBuilder**，代码就补贴了，自己去源码那里看吧。
+后来有发现系统的五个自带字段**status、create_by、create_date、update_by、update_date**有的要传，有的不要传，又要处理，搞来搞去最后就成就了这个接口最难的方法**jsonTableBuilder**和**jsonRowBuilder**，代码就不贴了，自己去源码那里看吧。
 
 ### 打包数据
 将数据打成压缩包这里没什么好说的，建各种临时目录，然后将上面生成的JSON字符串用aes加密后写到文件中，最后和一堆附件一起打包就好了，那就是**buildZip**方法了
