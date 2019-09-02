@@ -419,4 +419,6 @@ public interface TransmissionService {
 	Result serverPushBatch(String appUri, String transFlag);
 }
 ```  
-##### 觉得这个接口还可以的小伙伴点手关注啊，有兴趣了解的小伙伴就把代码check下来看一下吧 ヾ(￣▽￣)Bye~Bye~
+##### 觉得这个接口还可以的小伙伴点手关注啊，有兴趣了解的小伙伴就把代码check下来看一下吧  
+[还写了一个很难发现的文档，所以在这里给个友情链接](http://192.168.6.2/svn/jeesite/jc-modules/jc-send/blob/master/%E7%9C%9F%E2%80%A2readme.md)  
+ヾ(￣▽￣)Bye~Bye~
