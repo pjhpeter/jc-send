@@ -740,18 +740,20 @@ public class TransmissionServiceImpl implements TransmissionService {
 	private <T extends DataEntity<?>> JSONObject jsonTableBuilder(List<T> list, Class<T> entityType, List<File> fileList, boolean requireSysColumn, String[] requireSysColumnArr, String extraStr)
 			throws Exception {
 		JSONObject table = new JSONObject();
-		JSONArray rows = new JSONArray();
-		String tableName = "";
-		if (entityType.isAnnotationPresent(SendTable.class)) {
-			tableName = entityType.getAnnotation(SendTable.class).to();
-		} else {
-			tableName = entityType.getAnnotation(Table.class).name();
+		if (list != null) {
+			JSONArray rows = new JSONArray();
+			String tableName = "";
+			if (entityType.isAnnotationPresent(SendTable.class)) {
+				tableName = entityType.getAnnotation(SendTable.class).to();
+			} else {
+				tableName = entityType.getAnnotation(Table.class).name();
+			}
+			table.put("table", tableName);
+			for (DataEntity<?> entity : list) {
+				rows.add(jsonRowBuilder(entity, fileList, requireSysColumn, requireSysColumnArr));
+			}
+			table.put("rows", rows);
 		}
-		table.put("table", tableName);
-		for (DataEntity<?> entity : list) {
-			rows.add(jsonRowBuilder(entity, fileList, requireSysColumn, requireSysColumnArr));
-		}
-		table.put("rows", rows);
 
 		// 额外传输字符串
 		if (StringUtils.isNotBlank(extraStr)) {
@@ -767,18 +769,20 @@ public class TransmissionServiceImpl implements TransmissionService {
 	private <T extends DataEntity<?>> JSONObject jsonTableBuilder4Push(List<T> list, Class<T> entityType, List<File> fileList, boolean requireSysColumn, String[] requireSysColumnArr, String extraStr)
 			throws Exception {
 		JSONObject table = new JSONObject();
-		JSONArray rows = new JSONArray();
-		String tableName = "";
-		if (entityType.isAnnotationPresent(PushTable.class)) {
-			tableName = entityType.getAnnotation(PushTable.class).to();
-		} else {
-			tableName = entityType.getAnnotation(Table.class).name();
+		if (list != null) {
+			JSONArray rows = new JSONArray();
+			String tableName = "";
+			if (entityType.isAnnotationPresent(PushTable.class)) {
+				tableName = entityType.getAnnotation(PushTable.class).to();
+			} else {
+				tableName = entityType.getAnnotation(Table.class).name();
+			}
+			table.put("table", tableName);
+			for (DataEntity<?> entity : list) {
+				rows.add(jsonRowBuilder4Push(entity, fileList, requireSysColumn, requireSysColumnArr));
+			}
+			table.put("rows", rows);
 		}
-		table.put("table", tableName);
-		for (DataEntity<?> entity : list) {
-			rows.add(jsonRowBuilder4Push(entity, fileList, requireSysColumn, requireSysColumnArr));
-		}
-		table.put("rows", rows);
 
 		// 额外传输字符串
 		if (StringUtils.isNotBlank(extraStr)) {
@@ -1289,10 +1293,12 @@ public class TransmissionServiceImpl implements TransmissionService {
 		JSONObject table = JSON.parseObject(jsonStr);
 		// 数据库表名
 		String tableName = table.getString("table");
-		// 行数据json
-		JSONArray rows = table.getJSONArray("rows");
-		// 数据库数据和附件文件
-		this.dataBaseHandler.setData(tableName, rows, unZipDir);
+		if (StringUtils.isNotBlank(tableName)) {
+			// 行数据json
+			JSONArray rows = table.getJSONArray("rows");
+			// 数据库数据和附件文件
+			this.dataBaseHandler.setData(tableName, rows, unZipDir);
+		}
 		// 处理额外传输文件
 		File extraFileDir = new File(unZipDir + File.separator + Constant.TemplDir.EXTRA_FILE_TEMP);
 		if (extraFileDir.exists()) {
@@ -1335,10 +1341,12 @@ public class TransmissionServiceImpl implements TransmissionService {
 			JSONObject jsonObj = JSON.parseObject(object.toString());
 			// 数据库表名
 			String tableName = jsonObj.getString("table");
-			// 行数据json
-			JSONArray rows = jsonObj.getJSONArray("rows");
-			// 数据库数据和附件文件
-			this.dataBaseHandler.setData(tableName, rows, unZipDir);
+			if (StringUtils.isNotBlank(tableName)) {
+				// 行数据json
+				JSONArray rows = jsonObj.getJSONArray("rows");
+				// 数据库数据和附件文件
+				this.dataBaseHandler.setData(tableName, rows, unZipDir);
+			}
 		}
 
 		// 处理额外传输文件
