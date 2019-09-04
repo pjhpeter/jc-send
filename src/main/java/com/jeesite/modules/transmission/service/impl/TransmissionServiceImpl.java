@@ -76,17 +76,30 @@ public class TransmissionServiceImpl implements TransmissionService {
 	private SpringContextsUtil springContextsUtil;
 
 	/*
-	 * 批量传输的json数据
+	 * 批量发送的json数据
 	 */
-	private JSONArray tables;
+	private JSONArray sendTables;
 	/*
-	 * 批量传输的附件列表
+	 * 批量发送的附件列表
 	 */
-	private List<File> fileList;
+	private List<File> sendFileList;
 	/*
-	 * 批量传输的额外文件
+	 * 批量发送的额外文件
 	 */
-	private List<ExtraFile> extraFileList;
+	private List<ExtraFile> sendExtraFileList;
+
+	/*
+	 * 批量推送的json数据
+	 */
+	private JSONArray pushTables;
+	/*
+	 * 批量推送的附件列表
+	 */
+	private List<File> pushFileList;
+	/*
+	 * 批量推送的额外文件
+	 */
+	private List<ExtraFile> pushExtraFileList;
 
 	@Override
 	public <T extends DataEntity<?>> Result clientSend(TransEntity<T> transEntity) {
@@ -117,41 +130,13 @@ public class TransmissionServiceImpl implements TransmissionService {
 	}
 
 	@Override
-	public <T extends DataEntity<?>> void addTransBatch(TransEntity<T> transEntity) throws Exception {
-		List<T> list = null;
-		List<ExtraFile> extraFileList = null;
-		if (transEntity.getEntity() != null) {
-			list = ListUtils.newArrayList();
-			list.add(transEntity.getEntity());
-		} else {
-			list = transEntity.getList();
-		}
-		if (transEntity.getExtraFile() != null) {
-			extraFileList = ListUtils.newArrayList();
-			extraFileList.add(transEntity.getExtraFile());
-		} else if (transEntity.getExtraFileList() != null) {
-			extraFileList = transEntity.getExtraFileList();
-		}
+	public <T extends DataEntity<?>> void addSendBatch(TransEntity<T> transEntity) throws Exception {
+		addTransBatch(transEntity, false);
+	}
 
-		// 初始化
-		if (this.fileList == null) {
-			this.fileList = ListUtils.newArrayList();
-		}
-		if (this.tables == null) {
-			this.tables = new JSONArray();
-		}
-		if (this.extraFileList == null) {
-			this.extraFileList = ListUtils.newArrayList();
-		}
-
-		// 生成json数据
-		JSONObject table = jsonTableBuilder(list, transEntity.getEntityType(), this.fileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(), transEntity.getExtraStr());
-
-		// 加入批处理列表中
-		this.tables.add(table);
-		if (extraFileList != null) {
-			this.extraFileList.addAll(extraFileList);
-		}
+	@Override
+	public <T extends DataEntity<?>> void addPushBatch(TransEntity<T> transEntity) throws Exception {
+		addTransBatch(transEntity, true);
 	}
 
 	@Override
@@ -179,7 +164,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		String zipName = tempPath + File.separator + appUri + transFlag + ".zip";
 
 		// 创建压缩包
-		buildZip(this.extraFileList, tempPath, jsonPath, jsonFileName, zipName, this.fileList, this.tables.toJSONString());
+		buildZip(this.sendExtraFileList, tempPath, jsonPath, jsonFileName, zipName, this.sendFileList, this.sendTables.toJSONString());
 
 		// 分割压缩包文件
 		List<TempFile> tempFileList = this.fileHandler.splitFile(zipName, transFlag);
@@ -187,7 +172,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		transData(client, tempPath, tempFileList);
 
 		// 清除批处理临时变量
-		clean();
+		cleanSendBatch();
 
 		// 传输成功后调用接收方数据解析接口
 		return analysisMultiData(transFlag, client, triggerName);
@@ -345,7 +330,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		}
 
 		// 将所有要传输的数据压缩成压缩包
-		buildZip(this.extraFileList, tempPath, jsonPath, jsonFileName, zipName, this.fileList, this.tables.toJSONString());
+		buildZip(this.sendExtraFileList, tempPath, jsonPath, jsonFileName, zipName, this.sendFileList, this.sendTables.toJSONString());
 
 		// 下载
 		FileUtils.downFile(new File(zipName), request, response);
@@ -354,7 +339,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		FileUtils.deleteQuietly(new File(tempPath));
 
 		// 清除临时变量
-		clean();
+		cleanSendBatch();
 	}
 
 	/**
@@ -587,11 +572,11 @@ public class TransmissionServiceImpl implements TransmissionService {
 			String jsonPath = busTypeTempPath + File.separator + "json";
 			String jsonFileName = jsonPath + File.separator + transFlag + ".json";
 			String zipName = busTypeTempPath + File.separator + pullDataFlagId + "_" + transFlag + ".zip";
-			System.out.println(this.tables);
+			System.out.println(this.pushTables);
 			FileUtils.createDirectory(tempPath);
-			buildZip(this.extraFileList, busTypeTempPath, jsonPath, jsonFileName, zipName, this.fileList, this.tables.toJSONString());
+			buildZip(this.pushExtraFileList, busTypeTempPath, jsonPath, jsonFileName, zipName, this.pushFileList, this.pushTables.toJSONString());
 			// 记录待拉取的标识
-			PullDataFlag entity = new PullDataFlag(pullDataFlagId, appUri, transFlag, this.tables.toJSONString());
+			PullDataFlag entity = new PullDataFlag(pullDataFlagId, appUri, transFlag, this.pushTables.toJSONString());
 			entity.setIsNewRecord(true);
 			pullDataFlagService.save(entity);
 			FileUtils.deleteQuietly(new File(jsonPath));
@@ -601,7 +586,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			return new Result(false, Constant.Message.推送失败);
 		} finally {
 			// 情况临时变量
-			clean();
+			cleanPushBatch();
 		}
 	}
 
@@ -1377,10 +1362,16 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 清除临时变量
 	 */
-	private void clean() {
-		this.fileList = null;
-		this.extraFileList = null;
-		this.tables = null;
+	private void cleanSendBatch() {
+		this.sendFileList = null;
+		this.sendExtraFileList = null;
+		this.sendTables = null;
+	}
+
+	private void cleanPushBatch() {
+		this.pushFileList = null;
+		this.pushExtraFileList = null;
+		this.pushTables = null;
 	}
 
 	/*
@@ -1393,6 +1384,67 @@ public class TransmissionServiceImpl implements TransmissionService {
 			ReceiveTrigger trigger = (ReceiveTrigger) springContextsUtil.getBean(triggerName);
 			trigger.run(tables, busType);
 		}
+	}
+
+	/*
+	 * 添加数据到批量处理中
+	 */
+	private <T extends DataEntity<?>> void addTransBatch(TransEntity<T> transEntity, boolean isPush) throws Exception {
+		List<T> list = null;
+		List<ExtraFile> extraFileList = null;
+		if (transEntity.getEntity() != null) {
+			list = ListUtils.newArrayList();
+			list.add(transEntity.getEntity());
+		} else {
+			list = transEntity.getList();
+		}
+		if (transEntity.getExtraFile() != null) {
+			extraFileList = ListUtils.newArrayList();
+			extraFileList.add(transEntity.getExtraFile());
+		} else if (transEntity.getExtraFileList() != null) {
+			extraFileList = transEntity.getExtraFileList();
+		}
+
+		// 生成json数据
+		JSONObject table = null;
+		// 判断是否推送
+		if (isPush) {// 推送
+			// 初始化
+			if (this.pushFileList == null) {
+				this.pushFileList = ListUtils.newArrayList();
+			}
+			if (this.pushTables == null) {
+				this.pushTables = new JSONArray();
+			}
+			if (this.pushExtraFileList == null) {
+				this.pushExtraFileList = ListUtils.newArrayList();
+			}
+			table = jsonTableBuilder4Push(list, transEntity.getEntityType(), this.pushFileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(), transEntity.getExtraStr());
+			// 加入批处理列表中
+			this.pushTables.add(table);
+			if (extraFileList != null) {
+				this.pushExtraFileList.addAll(extraFileList);
+			}
+
+		} else {// 发送
+			// 初始化
+			if (this.sendFileList == null) {
+				this.sendFileList = ListUtils.newArrayList();
+			}
+			if (this.sendTables == null) {
+				this.sendTables = new JSONArray();
+			}
+			if (this.sendExtraFileList == null) {
+				this.sendExtraFileList = ListUtils.newArrayList();
+			}
+			table = jsonTableBuilder(list, transEntity.getEntityType(), this.sendFileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(), transEntity.getExtraStr());
+			// 加入批处理列表中
+			this.sendTables.add(table);
+			if (extraFileList != null) {
+				this.sendExtraFileList.addAll(extraFileList);
+			}
+		}
+
 	}
 
 	/*
