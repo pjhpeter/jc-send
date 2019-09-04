@@ -210,8 +210,8 @@ transmissionService.importData(file, "SbosMemberSecbook");
 ## 在线的
 ```
 // 添加要批处理对象
-transmissionService.addTransBatch(transEntity1);
-transmissionService.addTransBatch(transEntity2);
+transmissionService.addSendBatch(transEntity1);
+transmissionService.addSendBatch(transEntity2);
 
 boolean renewal = false;
 //transFlag是传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
@@ -226,8 +226,8 @@ System.out.println(result);
 导出  
 ```
 // 添加要批处理对象
-transmissionService.addTransBatch(transEntity1);
-transmissionService.addTransBatch(transEntity2);
+transmissionService.addSendBatch(transEntity1);
+transmissionService.addSendBatch(transEntity2);
 
 //transFlag是传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
 //exportFileName是导出后的压缩包文件名，不传默认会用busType做文件名
@@ -242,8 +242,8 @@ transmissionService.importDataBatch(file, transFlag);
 ##  推送的
 ```
 // 添加要批处理对象
-transmissionService.addTransBatch(transEntity1);
-transmissionService.addTransBatch(transEntity2);
+transmissionService.addPushBatch(transEntity1);
+transmissionService.addPushBatch(transEntity2);
 
 //transFlag是传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
 Result result = transmissionService.serverPushBatch(appUri, transFlag);
