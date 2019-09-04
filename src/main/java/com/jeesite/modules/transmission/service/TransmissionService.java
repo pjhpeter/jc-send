@@ -27,13 +27,21 @@ public interface TransmissionService {
 	<T extends DataEntity<?>> Result clientSend(TransEntity<T> transEntity);
 
 	/**
-	 * 添加传输数据到批处理列表中，准备批量传输，在线传输和离线传输都用这个接口做批量处理
+	 * 添加发送数据到批处理列表中，准备发送传输，在线发送和离线发送都用这个接口做批量处理
 	 * 
 	 * @param transEntity
 	 *            传输接口参数对象
 	 * @throws Exception
 	 */
-	<T extends DataEntity<?>> void addTransBatch(TransEntity<T> transEntity) throws Exception;
+	<T extends DataEntity<?>> void addSendBatch(TransEntity<T> transEntity) throws Exception;
+
+	/**
+	 * 添加推送数据到批量处理列表中，准备批量推送
+	 * 
+	 * @param transEntity
+	 * @throws Exception
+	 */
+	<T extends DataEntity<?>> void addPushBatch(TransEntity<T> transEntity) throws Exception;
 
 	/**
 	 * 执行批量传输
