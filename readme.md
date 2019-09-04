@@ -210,8 +210,8 @@ transmissionService.importData(file, "SbosMemberSecbook");
 ## 在线的
 ```
 // 添加要批处理对象
-transmissionService.addTransBatch(transEntity1);
-transmissionService.addTransBatch(transEntity2);
+transmissionService.addSendBatch(transEntity1);
+transmissionService.addSendBatch(transEntity2);
 
 boolean renewal = false;
 //transFlag是传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
@@ -226,8 +226,8 @@ System.out.println(result);
 导出  
 ```
 // 添加要批处理对象
-transmissionService.addTransBatch(transEntity1);
-transmissionService.addTransBatch(transEntity2);
+transmissionService.addSendBatch(transEntity1);
+transmissionService.addSendBatch(transEntity2);
 
 //transFlag是传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
 //exportFileName是导出后的压缩包文件名，不传默认会用busType做文件名
@@ -242,8 +242,8 @@ transmissionService.importDataBatch(file, transFlag);
 ##  推送的
 ```
 // 添加要批处理对象
-transmissionService.addTransBatch(transEntity1);
-transmissionService.addTransBatch(transEntity2);
+transmissionService.addPushBatch(transEntity1);
+transmissionService.addPushBatch(transEntity2);
 
 //transFlag是传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
 Result result = transmissionService.serverPushBatch(appUri, transFlag);
@@ -419,4 +419,6 @@ public interface TransmissionService {
 	Result serverPushBatch(String appUri, String transFlag);
 }
 ```  
-##### 觉得这个接口还可以的小伙伴点手关注啊，有兴趣了解的小伙伴就把代码check下来看一下吧 ヾ(￣▽￣)Bye~Bye~
+##### 觉得这个接口还可以的小伙伴点手关注啊，有兴趣了解的小伙伴就把代码check下来看一下吧  
+[还写了一个很难发现的文档，所以在这里给个友情链接](http://192.168.6.2/svn/jeesite/jc-modules/jc-send/blob/master/%E7%9C%9F%E2%80%A2readme.md)  
+ヾ(￣▽￣)Bye~Bye~
