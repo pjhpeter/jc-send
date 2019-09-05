@@ -13,5 +13,5 @@ CREATE TABLE trans_pull_data_flag(
 	id VARCHAR(64) PRIMARY KEY,
 	app_uri VARCHAR(50),-- 应用唯一标识
 	bus_type VARCHAR(100),-- 业务类型
-	rows_json_str text-- 待拉取的数据
+	rows_json_str longtext-- 待拉取的数据
 );
