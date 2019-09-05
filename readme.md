@@ -271,6 +271,8 @@ System.out.println(result);
  * 
  * requireSysColumnArr 如果系统的5个字段只传输其中一部分的话，在这里设置，如只用了create_date和update_date，{create_date,update_date}
  * 
+ * requireTreeColumn 是否需要传输系统的树结构字段，继承TreeEntity才有的
+ * 
  * extraFileList 额外要传输的文件列表，有需要额外传输的文件，这些文件不存在于附件中，比如跳过系统上传组件自动生成的文件，需要传如此参数
  * 
  * extraFile 单个额外要传输的文件，有需要额外传输的文件，这些文件不存在于附件中，比如跳过系统上传组件自动生成的文件，需要传如此参数
