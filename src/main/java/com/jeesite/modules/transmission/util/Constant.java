@@ -120,4 +120,14 @@ public class Constant {
 		public static final String UPDATE_BY = "update_by";
 		public static final String UPDATE_DATE = "update_date";
 	}
+
+	public class SysTreeCoumn {
+		public static final String PARENT_CODE = "parent_code";
+		public static final String PARENT_CODES = "parent_codes";
+		public static final String TREE_SORT = "tree_sort";
+		public static final String TREE_SORTS = "tree_sorts";
+		public static final String TREE_LEAF = "tree_leaf";
+		public static final String TREE_LEVEL = "tree_level";
+		public static final String TREE_NAMES = "tree_names";
+	}
 }
