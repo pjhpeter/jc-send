@@ -1245,6 +1245,68 @@ public class TransmissionServiceImpl implements TransmissionService {
 			}
 		}
 
+		// 系统的树结构字段，继承TreeEntity才有
+		if (requireTreeColumn) {
+			@SuppressWarnings("rawtypes")
+			TreeEntity treeEntity = (TreeEntity) entity;
+			String parentCode = treeEntity.getParentCode();
+			String parentCodes = treeEntity.getParentCodes();
+			Integer treeSort = treeEntity.getTreeSort();
+			String treeSorts = treeEntity.getTreeSorts();
+			String treeLeaf = treeEntity.getTreeLeaf();
+			Integer treeLevel = treeEntity.getTreeLevel();
+			String treeNames = treeEntity.getTreeNames();
+			if (StringUtils.isNotBlank(parentCode)) {
+				JSONObject parentCodeJson = new JSONObject();
+				parentCodeJson.put("to", Constant.SysTreeCoumn.PARENT_CODE);
+				parentCodeJson.put("value", parentCode);
+				parentCodeJson.put("type", "string");
+				rowData.add(parentCodeJson);
+			}
+			if (StringUtils.isNotBlank(parentCodes)) {
+				JSONObject parentCodesJson = new JSONObject();
+				parentCodesJson.put("to", Constant.SysTreeCoumn.PARENT_CODES);
+				parentCodesJson.put("value", parentCodes);
+				parentCodesJson.put("type", "string");
+				rowData.add(parentCodesJson);
+			}
+			if (treeSort != null) {
+				JSONObject treeSortJson = new JSONObject();
+				treeSortJson.put("to", Constant.SysTreeCoumn.TREE_SORT);
+				treeSortJson.put("value", treeSort);
+				treeSortJson.put("type", "number");
+				rowData.add(treeSortJson);
+			}
+			if (StringUtils.isNotBlank(treeSorts)) {
+				JSONObject treeSortsJson = new JSONObject();
+				treeSortsJson.put("to", Constant.SysTreeCoumn.TREE_SORTS);
+				treeSortsJson.put("value", treeSorts);
+				treeSortsJson.put("type", "string");
+				rowData.add(treeSortsJson);
+			}
+			if (StringUtils.isNotBlank(treeLeaf)) {
+				JSONObject treeLeafJson = new JSONObject();
+				treeLeafJson.put("to", Constant.SysTreeCoumn.TREE_LEAF);
+				treeLeafJson.put("value", treeLeaf);
+				treeLeafJson.put("type", "string");
+				rowData.add(treeLeafJson);
+			}
+			if (treeLevel != null) {
+				JSONObject treeLevelJson = new JSONObject();
+				treeLevelJson.put("to", Constant.SysTreeCoumn.TREE_LEVEL);
+				treeLevelJson.put("value", treeLevel);
+				treeLevelJson.put("type", "number");
+				rowData.add(treeLevelJson);
+			}
+			if (StringUtils.isNotBlank(treeNames)) {
+				JSONObject treeNamesJson = new JSONObject();
+				treeNamesJson.put("to", Constant.SysTreeCoumn.TREE_NAMES);
+				treeNamesJson.put("value", treeNames);
+				treeNamesJson.put("type", "string");
+				rowData.add(treeNamesJson);
+			}
+		}
+
 		row.put("id", idJson);
 		row.put("rowData", rowData);
 
