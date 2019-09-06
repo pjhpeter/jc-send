@@ -725,7 +725,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 解析集合，生成报送json
 	 */
-	public <T extends DataEntity<?>> JSONObject jsonTableBuilder(List<T> list, Class<T> entityType, List<File> fileList, boolean requireSysColumn, String[] requireSysColumnArr,
+	private <T extends DataEntity<?>> JSONObject jsonTableBuilder(List<T> list, Class<T> entityType, List<File> fileList, boolean requireSysColumn, String[] requireSysColumnArr,
 			boolean requireTreeColumn, String extraStr, String toTableName) throws Exception {
 		JSONObject table = new JSONObject();
 		if (list != null) {
