@@ -262,8 +262,11 @@ System.out.println(result);
  * 
  * entityType 需要传输的对象的实体类型
  * 
- * url 传输接收方的地址，如：192.168.1.1:8080/temp busType 业务类型，该传输业务的唯一标识，自己定义 renewal
- * 断点续传的标识
+ * url 传输接收方的地址，如：192.168.1.1:8080/temp 
+ * 
+ * busType 业务类型，该传输业务的唯一标识，自己定义 
+ * 
+ * toTableName 接收方数据库表名，针对同一业务传输向多个接收方，而且各自的表名都不一样的情况，这个参数的值不为空时会覆盖@Table、@SendTable和@PushTable的配置
  * 
  * renewal 是否断点续传，默认false
  * 
