@@ -1,9 +1,11 @@
 package com.jeesite.modules.transmission.service.impl;
 
+import java.beans.IntrospectionException;
 import java.beans.PropertyDescriptor;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Date;
 import java.util.List;
@@ -798,54 +800,126 @@ public class TransmissionServiceImpl implements TransmissionService {
 		List<Field> pkList = ListUtils.newArrayList();
 		Field[] fields = entity.getClass().getDeclaredFields();
 		for (Field field : fields) {
-			if (field.isAnnotationPresent(SendField.class)) {
-				SendField annotation = field.getAnnotation(SendField.class);
-				// 获取接收方对应数据库列名
-				String to = annotation.to();
-				if (StringUtils.isBlank(to)) {
-					to = toUnderLine(field.getName());
-				}
-				// 获取成员变量的值
-				PropertyDescriptor pd = new PropertyDescriptor(field.getName(), css);
-				Method readMethod = pd.getReadMethod();
-				Class<?> type = field.getType();
-				Object obj = readMethod.invoke(entity);
-				if (obj != null) {
-					JSONObject column = new JSONObject();
-					if (annotation.isPK()) {
-						pkList.add(field);
-						column.put("isPK", true);
-					}
-					column.put("to", to);
-					if (type.isAssignableFrom(Number.class)) {// 判断是否数字
-						if (type.isAssignableFrom(Integer.class)) {
-							column.put("value", Integer.parseInt(obj.toString()));
-						} else if (type.isAssignableFrom(Float.class)) {
-							column.put("value", Float.parseFloat(obj.toString()));
-						} else if (type.isAssignableFrom(Double.class)) {
-							column.put("value", Double.parseDouble(obj.toString()));
-						} else if (type.isAssignableFrom(Long.class)) {
-							column.put("value", Long.parseLong(obj.toString()));
-						} else {
-							column.put("value", Short.parseShort(obj.toString()));
-						}
-						column.put("type", "number");
-					} else if (type.isAssignableFrom(Boolean.class)) {// 布尔值
-						column.put("value", Boolean.parseBoolean(obj.toString()));
-						column.put("type", "boolean");
-					} else if (type.isAssignableFrom(Date.class)) {// 日期
-						column.put("value", obj);
-						column.put("type", "date");
-					} else {// 字符串
-						column.put("value", obj.toString());
-						column.put("type", "string");
-					}
-					rowData.add(column);
-				}
-			}
+			buildSendRow(entity, rowData, css, pkList, field);
 		}
 
 		// 拼接主键信息
+		JSONObject idJson = buildIdJson(entity, rowData, css, pkList);
+
+		// 系统五个默认字段
+		sysColumnHandle(entity, requireSysColumn, requireSysColumnArr, rowData);
+
+		// 系统的树结构字段，继承TreeEntity才有
+		if (requireTreeColumn) {
+			sysTreeColumnHandle(entity, rowData);
+		}
+
+		row.put("id", idJson);
+		row.put("rowData", rowData);
+
+		// 获取附件信息
+		// 联合主键的情况意味着id为空，框架的附件机制并不支持联合主键，所以如果id为空则不考虑附件的处理
+		if (entity.getId() != null) {
+			fileUploadHandle(entity, fileList, row);
+		}
+
+		return row;
+	}
+
+	/*
+	 * 解析实体，生成报送json
+	 */
+	private <T extends DataEntity<?>> JSONObject jsonRowBuilder4Push(T entity, List<File> fileList, boolean requireSysColumn, String[] requireSysColumnArr, boolean requireTreeColumn)
+			throws Exception {
+		// 拼接表数据json
+		// 设置主键
+		JSONObject row = new JSONObject();
+		JSONArray rowData = new JSONArray();
+		@SuppressWarnings("rawtypes")
+		Class<? extends DataEntity> css = entity.getClass();
+		// 主键集合
+		List<Field> pkList = ListUtils.newArrayList();
+		Field[] fields = entity.getClass().getDeclaredFields();
+		for (Field field : fields) {
+			buildPushRow(entity, rowData, css, pkList, field);
+		}
+
+		// 拼接主键信息
+		JSONObject idJson = buildIdJson(entity, rowData, css, pkList);
+
+		// 系统五个默认字段
+		sysColumnHandle(entity, requireSysColumn, requireSysColumnArr, rowData);
+
+		// 系统的树结构字段，继承TreeEntity才有
+		if (requireTreeColumn) {
+			sysTreeColumnHandle(entity, rowData);
+		}
+
+		row.put("id", idJson);
+		row.put("rowData", rowData);
+
+		// 获取附件信息
+		// 联合主键的情况意味着id为空，框架的附件机制并不支持联合主键，所以如果id为空则不考虑附件的处理
+		if (entity.getId() != null) {
+			fileUploadHandle(entity, fileList, row);
+		}
+
+		return row;
+	}
+
+	@SuppressWarnings("rawtypes")
+	private <T extends DataEntity<?>> void buildSendRow(T entity, JSONArray rowData, Class<? extends DataEntity> css, List<Field> pkList, Field field)
+			throws IntrospectionException, IllegalAccessException, InvocationTargetException {
+		if (field.isAnnotationPresent(SendField.class)) {
+			SendField annotation = field.getAnnotation(SendField.class);
+			// 获取接收方对应数据库列名
+			String to = annotation.to();
+			if (StringUtils.isBlank(to)) {
+				to = toUnderLine(field.getName());
+			}
+			// 获取成员变量的值
+			PropertyDescriptor pd = new PropertyDescriptor(field.getName(), css);
+			Method readMethod = pd.getReadMethod();
+			Class<?> type = field.getType();
+			Object obj = readMethod.invoke(entity);
+			if (obj != null) {
+				JSONObject column = new JSONObject();
+				if (annotation.isPK()) {
+					pkList.add(field);
+					column.put("isPK", true);
+				}
+				column.put("to", to);
+				if (type.isAssignableFrom(Number.class)) {// 判断是否数字
+					if (type.isAssignableFrom(Integer.class)) {
+						column.put("value", Integer.parseInt(obj.toString()));
+					} else if (type.isAssignableFrom(Float.class)) {
+						column.put("value", Float.parseFloat(obj.toString()));
+					} else if (type.isAssignableFrom(Double.class)) {
+						column.put("value", Double.parseDouble(obj.toString()));
+					} else if (type.isAssignableFrom(Long.class)) {
+						column.put("value", Long.parseLong(obj.toString()));
+					} else {
+						column.put("value", Short.parseShort(obj.toString()));
+					}
+					column.put("type", "number");
+				} else if (type.isAssignableFrom(Boolean.class)) {// 布尔值
+					column.put("value", Boolean.parseBoolean(obj.toString()));
+					column.put("type", "boolean");
+				} else if (type.isAssignableFrom(Date.class)) {// 日期
+					column.put("value", obj);
+					column.put("type", "date");
+				} else {// 字符串
+					column.put("value", obj.toString());
+					column.put("type", "string");
+				}
+				rowData.add(column);
+			}
+		}
+	}
+
+	@SuppressWarnings("rawtypes")
+	private <T extends DataEntity<?>> JSONObject buildIdJson(T entity, JSONArray rowData, Class<? extends DataEntity> css, List<Field> pkList)
+			throws IntrospectionException, IllegalAccessException, InvocationTargetException {
 		JSONObject idJson = new JSONObject();
 		if (pkList.size() > 0) {// 联合组建
 			for (Field field : pkList) {
@@ -877,286 +951,10 @@ public class TransmissionServiceImpl implements TransmissionService {
 			id.put("type", "string");
 			rowData.add(id);
 		}
-
-		// 系统五个默认字段
-		if (requireSysColumn) {
-			Date createDate = entity.getCreateDate();
-			Date updateDate = entity.getUpdateDate();
-			String createBy = entity.getCreateBy();
-			String updateBy = entity.getUpdateBy();
-			String status = entity.getStatus();
-			if (StringUtils.isNotBlank(status)) {
-				JSONObject statusJson = new JSONObject();
-				statusJson.put("to", Constant.SysCoumn.STATUS);
-				statusJson.put("value", status);
-				statusJson.put("type", "string");
-				rowData.add(statusJson);
-			}
-			if (StringUtils.isNotBlank(createBy)) {
-				JSONObject createByJson = new JSONObject();
-				createByJson.put("to", Constant.SysCoumn.CREATE_BY);
-				createByJson.put("value", createBy);
-				createByJson.put("type", "string");
-				rowData.add(createByJson);
-			}
-			if (createDate != null) {
-				JSONObject createDateJson = new JSONObject();
-				createDateJson.put("to", Constant.SysCoumn.CREATE_DATE);
-				createDateJson.put("value", createDate);
-				createDateJson.put("type", "date");
-				rowData.add(createDateJson);
-			}
-			if (StringUtils.isNotBlank(updateBy)) {
-				JSONObject updateByJson = new JSONObject();
-				updateByJson.put("to", Constant.SysCoumn.UPDATE_BY);
-				updateByJson.put("value", updateBy);
-				updateByJson.put("type", "string");
-				rowData.add(updateByJson);
-			}
-			if (updateDate != null) {
-				JSONObject updateDateJson = new JSONObject();
-				updateDateJson.put("to", Constant.SysCoumn.UPDATE_DATE);
-				updateDateJson.put("value", updateDate);
-				updateDateJson.put("type", "date");
-				rowData.add(updateDateJson);
-			}
-		} else if (requireSysColumnArr != null) {
-			for (String columnName : requireSysColumnArr) {
-				if (columnName.equals(Constant.SysCoumn.STATUS)) {
-					String status = entity.getStatus();
-					if (StringUtils.isNotBlank(status)) {
-						JSONObject statusJson = new JSONObject();
-						statusJson.put("to", Constant.SysCoumn.STATUS);
-						statusJson.put("value", status);
-						statusJson.put("type", "string");
-						rowData.add(statusJson);
-					}
-				} else if (columnName.equals(Constant.SysCoumn.CREATE_BY)) {
-					String createBy = entity.getCreateBy();
-					if (StringUtils.isNotBlank(createBy)) {
-						JSONObject createByJson = new JSONObject();
-						createByJson.put("to", Constant.SysCoumn.CREATE_BY);
-						createByJson.put("value", createBy);
-						createByJson.put("type", "string");
-						rowData.add(createByJson);
-					}
-				} else if (columnName.equals(Constant.SysCoumn.CREATE_DATE)) {
-					Date createDate = entity.getCreateDate();
-					if (createDate != null) {
-						JSONObject createDateJson = new JSONObject();
-						createDateJson.put("to", "create_date");
-						createDateJson.put("value", createDate);
-						createDateJson.put("type", "date");
-						rowData.add(createDateJson);
-					}
-				} else if (columnName.equals(Constant.SysCoumn.UPDATE_BY)) {
-					String updateBy = entity.getUpdateBy();
-					if (StringUtils.isNotBlank(updateBy)) {
-						JSONObject updateByJson = new JSONObject();
-						updateByJson.put("to", Constant.SysCoumn.UPDATE_BY);
-						updateByJson.put("value", updateBy);
-						updateByJson.put("type", "string");
-						rowData.add(updateByJson);
-					}
-				} else if (columnName.equals(Constant.SysCoumn.UPDATE_DATE)) {
-					Date updateDate = entity.getUpdateDate();
-					if (updateDate != null) {
-						JSONObject updateDateJson = new JSONObject();
-						updateDateJson.put("to", Constant.SysCoumn.UPDATE_DATE);
-						updateDateJson.put("value", updateDate);
-						updateDateJson.put("type", "date");
-						rowData.add(updateDateJson);
-					}
-				}
-			}
-		}
-
-		// 系统的树结构字段，继承TreeEntity才有
-		if (requireTreeColumn) {
-			@SuppressWarnings("rawtypes")
-			TreeEntity treeEntity = (TreeEntity) entity;
-			String parentCode = treeEntity.getParentCode();
-			String parentCodes = treeEntity.getParentCodes();
-			Integer treeSort = treeEntity.getTreeSort();
-			String treeSorts = treeEntity.getTreeSorts();
-			String treeLeaf = treeEntity.getTreeLeaf();
-			Integer treeLevel = treeEntity.getTreeLevel();
-			String treeNames = treeEntity.getTreeNames();
-			if (StringUtils.isNotBlank(parentCode)) {
-				JSONObject parentCodeJson = new JSONObject();
-				parentCodeJson.put("to", Constant.SysTreeCoumn.PARENT_CODE);
-				parentCodeJson.put("value", parentCode);
-				parentCodeJson.put("type", "string");
-				rowData.add(parentCodeJson);
-			}
-			if (StringUtils.isNotBlank(parentCodes)) {
-				JSONObject parentCodesJson = new JSONObject();
-				parentCodesJson.put("to", Constant.SysTreeCoumn.PARENT_CODES);
-				parentCodesJson.put("value", parentCodes);
-				parentCodesJson.put("type", "string");
-				rowData.add(parentCodesJson);
-			}
-			if (treeSort != null) {
-				JSONObject treeSortJson = new JSONObject();
-				treeSortJson.put("to", Constant.SysTreeCoumn.TREE_SORT);
-				treeSortJson.put("value", treeSort);
-				treeSortJson.put("type", "number");
-				rowData.add(treeSortJson);
-			}
-			if (StringUtils.isNotBlank(treeSorts)) {
-				JSONObject treeSortsJson = new JSONObject();
-				treeSortsJson.put("to", Constant.SysTreeCoumn.TREE_SORTS);
-				treeSortsJson.put("value", treeSorts);
-				treeSortsJson.put("type", "string");
-				rowData.add(treeSortsJson);
-			}
-			if (StringUtils.isNotBlank(treeLeaf)) {
-				JSONObject treeLeafJson = new JSONObject();
-				treeLeafJson.put("to", Constant.SysTreeCoumn.TREE_LEAF);
-				treeLeafJson.put("value", treeLeaf);
-				treeLeafJson.put("type", "string");
-				rowData.add(treeLeafJson);
-			}
-			if (treeLevel != null) {
-				JSONObject treeLevelJson = new JSONObject();
-				treeLevelJson.put("to", Constant.SysTreeCoumn.TREE_LEVEL);
-				treeLevelJson.put("value", treeLevel);
-				treeLevelJson.put("type", "number");
-				rowData.add(treeLevelJson);
-			}
-			if (StringUtils.isNotBlank(treeNames)) {
-				JSONObject treeNamesJson = new JSONObject();
-				treeNamesJson.put("to", Constant.SysTreeCoumn.TREE_NAMES);
-				treeNamesJson.put("value", treeNames);
-				treeNamesJson.put("type", "string");
-				rowData.add(treeNamesJson);
-			}
-		}
-
-		row.put("id", idJson);
-		row.put("rowData", rowData);
-
-		// 获取附件信息
-		// 联合主键的情况意味着id为空，框架的附件机制并不支持联合主键，所以如果id为空则不考虑附件的处理
-		if (entity.getId() != null) {
-			FileUpload fileUpload = new FileUpload();
-			fileUpload.setBizKey(entity.getId());
-			List<FileUpload> fileUploadList = fileUploadService.findList(fileUpload);
-			if (fileUploadList.size() > 0) {
-				JSONArray fileJsonArr = new JSONArray();
-				for (FileUpload fileUploadEntity : fileUploadList) {
-					JSONObject json = JSON.parseObject(JsonMapper.toJson(fileUploadEntity));
-					fileList.add(new File(Global.getUserfilesBaseDir("fileupload") + File.separator + fileUploadEntity.getFileEntity().getFilePath() + fileUploadEntity.getFileEntity().getFileId()
-							+ "." + fileUploadEntity.getFileEntity().getFileExtension()));
-					SendFile sendFile = new SendFile();
-					sendFile.setPath(fileUploadEntity.getFileEntity().getFilePath());
-					sendFile.setFileName(fileUploadEntity.getFileEntity().getFileId() + "." + fileUploadEntity.getFileEntity().getFileExtension());
-					json.put("fileInfo", JSON.parseObject(JsonMapper.toJson(sendFile)));
-					fileJsonArr.add(json);
-				}
-				row.put("fileList", fileJsonArr);
-			}
-		}
-
-		return row;
+		return idJson;
 	}
 
-	/*
-	 * 解析实体，生成报送json
-	 */
-	private <T extends DataEntity<?>> JSONObject jsonRowBuilder4Push(T entity, List<File> fileList, boolean requireSysColumn, String[] requireSysColumnArr, boolean requireTreeColumn)
-			throws Exception {
-		// 拼接表数据json
-		// 设置主键
-		JSONObject row = new JSONObject();
-		JSONArray rowData = new JSONArray();
-		@SuppressWarnings("rawtypes")
-		Class<? extends DataEntity> css = entity.getClass();
-		// 主键集合
-		List<Field> pkList = ListUtils.newArrayList();
-		Field[] fields = entity.getClass().getDeclaredFields();
-		for (Field field : fields) {
-			if (field.isAnnotationPresent(PushField.class)) {
-				PushField annotation = field.getAnnotation(PushField.class);
-				// 获取接收方对应数据库列名
-				String to = annotation.to();
-				if (StringUtils.isBlank(to)) {
-					to = toUnderLine(field.getName());
-				}
-				// 获取成员变量的值
-				PropertyDescriptor pd = new PropertyDescriptor(field.getName(), css);
-				Method readMethod = pd.getReadMethod();
-				Class<?> type = field.getType();
-				Object obj = readMethod.invoke(entity);
-				if (obj != null) {
-					JSONObject column = new JSONObject();
-					if (annotation.isPK()) {
-						pkList.add(field);
-						column.put("isPK", true);
-					}
-					column.put("to", to);
-					if (type.isAssignableFrom(Number.class)) {// 判断是否数字
-						if (type.isAssignableFrom(Integer.class)) {
-							column.put("value", Integer.parseInt(obj.toString()));
-						} else if (type.isAssignableFrom(Float.class)) {
-							column.put("value", Float.parseFloat(obj.toString()));
-						} else if (type.isAssignableFrom(Double.class)) {
-							column.put("value", Double.parseDouble(obj.toString()));
-						} else if (type.isAssignableFrom(Long.class)) {
-							column.put("value", Long.parseLong(obj.toString()));
-						} else {
-							column.put("value", Short.parseShort(obj.toString()));
-						}
-						column.put("type", "number");
-					} else if (type.isAssignableFrom(Boolean.class)) {// 布尔值
-						column.put("value", Boolean.parseBoolean(obj.toString()));
-						column.put("type", "boolean");
-					} else if (type.isAssignableFrom(Date.class)) {// 日期
-						column.put("value", obj);
-						column.put("type", "date");
-					} else {// 字符串
-						column.put("value", obj.toString());
-						column.put("type", "string");
-					}
-					rowData.add(column);
-				}
-			}
-		}
-
-		// 拼接主键信息
-		JSONObject idJson = new JSONObject();
-		if (pkList.size() > 0) {// 联合组建
-			for (Field field : pkList) {
-				String idKey = "";
-				// 获取接收方对应数据库列名
-				if (field.isAnnotationPresent(PushField.class)) {
-					idKey = field.getAnnotation(PushField.class).to();
-					if (StringUtils.isBlank(idKey)) {
-						idKey = toUnderLine(field.getName());
-					}
-				} else {
-					idKey = toUnderLine(field.getName());
-				}
-				// 获取成员变量的值
-				PropertyDescriptor pd = new PropertyDescriptor(field.getName(), css);
-				Method readMethod = pd.getReadMethod();
-				Object obj = readMethod.invoke(entity);
-				if (obj != null) {
-					idJson.put(idKey, obj);
-				}
-			}
-		} else {
-			idJson.put("id", entity.getId());
-			// 把id加到报送字段中
-			JSONObject id = new JSONObject();
-			id.put("isPK", true);
-			id.put("to", "id");
-			id.put("value", entity.getId());
-			id.put("type", "string");
-			rowData.add(id);
-		}
-
-		// 系统五个默认字段
+	private <T extends DataEntity<?>> void sysColumnHandle(T entity, boolean requireSysColumn, String[] requireSysColumnArr, JSONArray rowData) {
 		if (requireSysColumn) {
 			Date createDate = entity.getCreateDate();
 			Date updateDate = entity.getUpdateDate();
@@ -1248,95 +1046,137 @@ public class TransmissionServiceImpl implements TransmissionService {
 				}
 			}
 		}
+	}
 
-		// 系统的树结构字段，继承TreeEntity才有
-		if (requireTreeColumn) {
-			@SuppressWarnings("rawtypes")
-			TreeEntity treeEntity = (TreeEntity) entity;
-			String parentCode = treeEntity.getParentCode();
-			String parentCodes = treeEntity.getParentCodes();
-			Integer treeSort = treeEntity.getTreeSort();
-			String treeSorts = treeEntity.getTreeSorts();
-			String treeLeaf = treeEntity.getTreeLeaf();
-			Integer treeLevel = treeEntity.getTreeLevel();
-			String treeNames = treeEntity.getTreeNames();
-			if (StringUtils.isNotBlank(parentCode)) {
-				JSONObject parentCodeJson = new JSONObject();
-				parentCodeJson.put("to", Constant.SysTreeCoumn.PARENT_CODE);
-				parentCodeJson.put("value", parentCode);
-				parentCodeJson.put("type", "string");
-				rowData.add(parentCodeJson);
-			}
-			if (StringUtils.isNotBlank(parentCodes)) {
-				JSONObject parentCodesJson = new JSONObject();
-				parentCodesJson.put("to", Constant.SysTreeCoumn.PARENT_CODES);
-				parentCodesJson.put("value", parentCodes);
-				parentCodesJson.put("type", "string");
-				rowData.add(parentCodesJson);
-			}
-			if (treeSort != null) {
-				JSONObject treeSortJson = new JSONObject();
-				treeSortJson.put("to", Constant.SysTreeCoumn.TREE_SORT);
-				treeSortJson.put("value", treeSort);
-				treeSortJson.put("type", "number");
-				rowData.add(treeSortJson);
-			}
-			if (StringUtils.isNotBlank(treeSorts)) {
-				JSONObject treeSortsJson = new JSONObject();
-				treeSortsJson.put("to", Constant.SysTreeCoumn.TREE_SORTS);
-				treeSortsJson.put("value", treeSorts);
-				treeSortsJson.put("type", "string");
-				rowData.add(treeSortsJson);
-			}
-			if (StringUtils.isNotBlank(treeLeaf)) {
-				JSONObject treeLeafJson = new JSONObject();
-				treeLeafJson.put("to", Constant.SysTreeCoumn.TREE_LEAF);
-				treeLeafJson.put("value", treeLeaf);
-				treeLeafJson.put("type", "string");
-				rowData.add(treeLeafJson);
-			}
-			if (treeLevel != null) {
-				JSONObject treeLevelJson = new JSONObject();
-				treeLevelJson.put("to", Constant.SysTreeCoumn.TREE_LEVEL);
-				treeLevelJson.put("value", treeLevel);
-				treeLevelJson.put("type", "number");
-				rowData.add(treeLevelJson);
-			}
-			if (StringUtils.isNotBlank(treeNames)) {
-				JSONObject treeNamesJson = new JSONObject();
-				treeNamesJson.put("to", Constant.SysTreeCoumn.TREE_NAMES);
-				treeNamesJson.put("value", treeNames);
-				treeNamesJson.put("type", "string");
-				rowData.add(treeNamesJson);
-			}
+	private <T extends DataEntity<?>> void sysTreeColumnHandle(T entity, JSONArray rowData) {
+		@SuppressWarnings("rawtypes")
+		TreeEntity treeEntity = (TreeEntity) entity;
+		String parentCode = treeEntity.getParentCode();
+		String parentCodes = treeEntity.getParentCodes();
+		Integer treeSort = treeEntity.getTreeSort();
+		String treeSorts = treeEntity.getTreeSorts();
+		String treeLeaf = treeEntity.getTreeLeaf();
+		Integer treeLevel = treeEntity.getTreeLevel();
+		String treeNames = treeEntity.getTreeNames();
+		if (StringUtils.isNotBlank(parentCode)) {
+			JSONObject parentCodeJson = new JSONObject();
+			parentCodeJson.put("to", Constant.SysTreeCoumn.PARENT_CODE);
+			parentCodeJson.put("value", parentCode);
+			parentCodeJson.put("type", "string");
+			rowData.add(parentCodeJson);
 		}
+		if (StringUtils.isNotBlank(parentCodes)) {
+			JSONObject parentCodesJson = new JSONObject();
+			parentCodesJson.put("to", Constant.SysTreeCoumn.PARENT_CODES);
+			parentCodesJson.put("value", parentCodes);
+			parentCodesJson.put("type", "string");
+			rowData.add(parentCodesJson);
+		}
+		if (treeSort != null) {
+			JSONObject treeSortJson = new JSONObject();
+			treeSortJson.put("to", Constant.SysTreeCoumn.TREE_SORT);
+			treeSortJson.put("value", treeSort);
+			treeSortJson.put("type", "number");
+			rowData.add(treeSortJson);
+		}
+		if (StringUtils.isNotBlank(treeSorts)) {
+			JSONObject treeSortsJson = new JSONObject();
+			treeSortsJson.put("to", Constant.SysTreeCoumn.TREE_SORTS);
+			treeSortsJson.put("value", treeSorts);
+			treeSortsJson.put("type", "string");
+			rowData.add(treeSortsJson);
+		}
+		if (StringUtils.isNotBlank(treeLeaf)) {
+			JSONObject treeLeafJson = new JSONObject();
+			treeLeafJson.put("to", Constant.SysTreeCoumn.TREE_LEAF);
+			treeLeafJson.put("value", treeLeaf);
+			treeLeafJson.put("type", "string");
+			rowData.add(treeLeafJson);
+		}
+		if (treeLevel != null) {
+			JSONObject treeLevelJson = new JSONObject();
+			treeLevelJson.put("to", Constant.SysTreeCoumn.TREE_LEVEL);
+			treeLevelJson.put("value", treeLevel);
+			treeLevelJson.put("type", "number");
+			rowData.add(treeLevelJson);
+		}
+		if (StringUtils.isNotBlank(treeNames)) {
+			JSONObject treeNamesJson = new JSONObject();
+			treeNamesJson.put("to", Constant.SysTreeCoumn.TREE_NAMES);
+			treeNamesJson.put("value", treeNames);
+			treeNamesJson.put("type", "string");
+			rowData.add(treeNamesJson);
+		}
+	}
 
-		row.put("id", idJson);
-		row.put("rowData", rowData);
+	private <T extends DataEntity<?>> void fileUploadHandle(T entity, List<File> fileList, JSONObject row) {
+		FileUpload fileUpload = new FileUpload();
+		fileUpload.setBizKey(entity.getId());
+		List<FileUpload> fileUploadList = fileUploadService.findList(fileUpload);
+		if (fileUploadList.size() > 0) {
+			JSONArray fileJsonArr = new JSONArray();
+			for (FileUpload fileUploadEntity : fileUploadList) {
+				JSONObject json = JSON.parseObject(JsonMapper.toJson(fileUploadEntity));
+				fileList.add(new File(Global.getUserfilesBaseDir("fileupload") + File.separator + fileUploadEntity.getFileEntity().getFilePath() + fileUploadEntity.getFileEntity().getFileId() + "."
+						+ fileUploadEntity.getFileEntity().getFileExtension()));
+				SendFile sendFile = new SendFile();
+				sendFile.setPath(fileUploadEntity.getFileEntity().getFilePath());
+				sendFile.setFileName(fileUploadEntity.getFileEntity().getFileId() + "." + fileUploadEntity.getFileEntity().getFileExtension());
+				json.put("fileInfo", JSON.parseObject(JsonMapper.toJson(sendFile)));
+				fileJsonArr.add(json);
+			}
+			row.put("fileList", fileJsonArr);
+		}
+	}
 
-		// 获取附件信息
-		// 联合主键的情况意味着id为空，框架的附件机制并不支持联合主键，所以如果id为空则不考虑附件的处理
-		if (entity.getId() != null) {
-			FileUpload fileUpload = new FileUpload();
-			fileUpload.setBizKey(entity.getId());
-			List<FileUpload> fileUploadList = fileUploadService.findList(fileUpload);
-			if (fileUploadList.size() > 0) {
-				JSONArray fileJsonArr = new JSONArray();
-				for (FileUpload fileUploadEntity : fileUploadList) {
-					JSONObject json = JSON.parseObject(JsonMapper.toJson(fileUploadEntity));
-					fileList.add(new File(Global.getUserfilesBaseDir("fileupload") + File.separator + fileUploadEntity.getFileEntity().getFilePath() + fileUploadEntity.getFileEntity().getFileId()
-							+ "." + fileUploadEntity.getFileEntity().getFileExtension()));
-					SendFile sendFile = new SendFile();
-					sendFile.setPath(fileUploadEntity.getFileEntity().getFilePath());
-					sendFile.setFileName(fileUploadEntity.getFileEntity().getFileId() + "." + fileUploadEntity.getFileEntity().getFileExtension());
-					json.put("fileInfo", JSON.parseObject(JsonMapper.toJson(sendFile)));
-					fileJsonArr.add(json);
+	@SuppressWarnings("rawtypes")
+	private <T extends DataEntity<?>> void buildPushRow(T entity, JSONArray rowData, Class<? extends DataEntity> css, List<Field> pkList, Field field)
+			throws IntrospectionException, IllegalAccessException, InvocationTargetException {
+		if (field.isAnnotationPresent(PushField.class)) {
+			PushField annotation = field.getAnnotation(PushField.class);
+			// 获取接收方对应数据库列名
+			String to = annotation.to();
+			if (StringUtils.isBlank(to)) {
+				to = toUnderLine(field.getName());
+			}
+			// 获取成员变量的值
+			PropertyDescriptor pd = new PropertyDescriptor(field.getName(), css);
+			Method readMethod = pd.getReadMethod();
+			Class<?> type = field.getType();
+			Object obj = readMethod.invoke(entity);
+			if (obj != null) {
+				JSONObject column = new JSONObject();
+				if (annotation.isPK()) {
+					pkList.add(field);
+					column.put("isPK", true);
 				}
-				row.put("fileList", fileJsonArr);
+				column.put("to", to);
+				if (type.isAssignableFrom(Number.class)) {// 判断是否数字
+					if (type.isAssignableFrom(Integer.class)) {
+						column.put("value", Integer.parseInt(obj.toString()));
+					} else if (type.isAssignableFrom(Float.class)) {
+						column.put("value", Float.parseFloat(obj.toString()));
+					} else if (type.isAssignableFrom(Double.class)) {
+						column.put("value", Double.parseDouble(obj.toString()));
+					} else if (type.isAssignableFrom(Long.class)) {
+						column.put("value", Long.parseLong(obj.toString()));
+					} else {
+						column.put("value", Short.parseShort(obj.toString()));
+					}
+					column.put("type", "number");
+				} else if (type.isAssignableFrom(Boolean.class)) {// 布尔值
+					column.put("value", Boolean.parseBoolean(obj.toString()));
+					column.put("type", "boolean");
+				} else if (type.isAssignableFrom(Date.class)) {// 日期
+					column.put("value", obj);
+					column.put("type", "date");
+				} else {// 字符串
+					column.put("value", obj.toString());
+					column.put("type", "string");
+				}
+				rowData.add(column);
 			}
 		}
-
-		return row;
 	}
 
 	/*
