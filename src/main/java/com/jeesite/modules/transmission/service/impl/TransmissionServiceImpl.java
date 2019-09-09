@@ -263,7 +263,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		List<File> fileList = ListUtils.newArrayList();
 		try {
 			// 生成json数据
-			JSONObject json = jsonTableBuilder(transEntity, fileList, null);
+			JSONObject json = jsonTableBuilder(transEntity, fileList, list);
 			// 将所有要传输的数据压缩成压缩包
 			buildZip(extraFileList, tempPath, jsonPath, jsonFileName, zipName, fileList, json.toJSONString());
 			// 下载
@@ -548,7 +548,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			String jsonFileName = jsonPath + File.separator + busType + ".json";
 			String zipName = busTypeTempPath + File.separator + pullDataFlagId + "_" + busType + ".zip";
 			JSONArray tables = new JSONArray();
-			JSONObject json = jsonTableBuilder4Push(transEntity, fileList, null);
+			JSONObject json = jsonTableBuilder4Push(transEntity, fileList, list);
 			// 统一变成JSONArray，拉取的时候好处理
 			tables.add(json);
 			System.out.println(tables);
@@ -614,7 +614,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		List<File> fileList = ListUtils.newArrayList();
 		try {
 			// 生成json数据字符串和收集报送的附件
-			JSONObject json = jsonTableBuilder(transEntity, fileList, null);
+			JSONObject json = jsonTableBuilder(transEntity, fileList, transEntity.getList());
 			System.out.println(json);
 			buildZip(transEntity.getExtraFileList(), tempPath, jsonPath, jsonFileName, zipName, fileList, json.toJSONString());
 			// 将zip文件拆分成若干小块
@@ -724,7 +724,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 解析集合，生成报送json
 	 */
-	private <T extends DataEntity<?>> JSONObject jsonTableBuilder(TransEntity<T> transEntity, List<File> fileList, List<DataEntity<?>> list) throws Exception {
+	private <T extends DataEntity<?>> JSONObject jsonTableBuilder(TransEntity<T> transEntity, List<File> fileList, List<T> list) throws Exception {
 		JSONObject table = new JSONObject();
 		if (list != null) {
 			JSONArray rows = new JSONArray();
@@ -754,7 +754,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 解析集合，生成推送json
 	 */
-	private <T extends DataEntity<?>> JSONObject jsonTableBuilder4Push(TransEntity<T> transEntity, List<File> fileList, List<DataEntity<?>> list) throws Exception {
+	private <T extends DataEntity<?>> JSONObject jsonTableBuilder4Push(TransEntity<T> transEntity, List<File> fileList, List<T> list) throws Exception {
 		JSONObject table = new JSONObject();
 		if (list != null) {
 			JSONArray rows = new JSONArray();
@@ -1385,7 +1385,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			if (this.pushExtraFileList == null) {
 				this.pushExtraFileList = ListUtils.newArrayList();
 			}
-			table = jsonTableBuilder4Push(transEntity, this.pushFileList, null);
+			table = jsonTableBuilder4Push(transEntity, this.pushFileList, list);
 			// 加入批处理列表中
 			this.pushTables.add(table);
 			if (extraFileList != null) {
@@ -1402,7 +1402,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			if (this.sendExtraFileList == null) {
 				this.sendExtraFileList = ListUtils.newArrayList();
 			}
-			table = jsonTableBuilder(transEntity, this.sendFileList, null);
+			table = jsonTableBuilder(transEntity, this.sendFileList, list);
 			// 加入批处理列表中
 			this.sendTables.add(table);
 			if (extraFileList != null) {
