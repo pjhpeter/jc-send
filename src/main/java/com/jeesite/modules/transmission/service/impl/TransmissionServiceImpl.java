@@ -263,8 +263,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		List<File> fileList = ListUtils.newArrayList();
 		try {
 			// 生成json数据
-			JSONObject json = jsonTableBuilder(list, transEntity.getEntityType(), fileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(), transEntity.isRequireTreeColumn(),
-					transEntity.getExtraStr(), transEntity.getToTableName());
+			JSONObject json = jsonTableBuilder(transEntity, fileList);
 			// 将所有要传输的数据压缩成压缩包
 			buildZip(extraFileList, tempPath, jsonPath, jsonFileName, zipName, fileList, json.toJSONString());
 			// 下载
@@ -549,8 +548,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			String jsonFileName = jsonPath + File.separator + busType + ".json";
 			String zipName = busTypeTempPath + File.separator + pullDataFlagId + "_" + busType + ".zip";
 			JSONArray tables = new JSONArray();
-			JSONObject json = jsonTableBuilder4Push(list, transEntity.getEntityType(), fileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(),
-					transEntity.isRequireTreeColumn(), transEntity.getExtraStr(), transEntity.getToTableName());
+			JSONObject json = jsonTableBuilder4Push(transEntity, fileList);
 			// 统一变成JSONArray，拉取的时候好处理
 			tables.add(json);
 			System.out.println(tables);
@@ -616,8 +614,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		List<File> fileList = ListUtils.newArrayList();
 		try {
 			// 生成json数据字符串和收集报送的附件
-			JSONObject json = jsonTableBuilder(transEntity.getList(), transEntity.getEntityType(), fileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(),
-					transEntity.isRequireTreeColumn(), transEntity.getExtraStr(), transEntity.getToTableName());
+			JSONObject json = jsonTableBuilder(transEntity, fileList);
 			System.out.println(json);
 			buildZip(transEntity.getExtraFileList(), tempPath, jsonPath, jsonFileName, zipName, fileList, json.toJSONString());
 			// 将zip文件拆分成若干小块
@@ -727,29 +724,28 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 解析集合，生成报送json
 	 */
-	private <T extends DataEntity<?>> JSONObject jsonTableBuilder(List<T> list, Class<T> entityType, List<File> fileList, boolean requireSysColumn, String[] requireSysColumnArr,
-			boolean requireTreeColumn, String extraStr, String toTableName) throws Exception {
+	private <T extends DataEntity<?>> JSONObject jsonTableBuilder(TransEntity<T> transEntity, List<File> fileList) throws Exception {
 		JSONObject table = new JSONObject();
-		if (list != null) {
+		if (transEntity.getList() != null) {
 			JSONArray rows = new JSONArray();
 			String tableName = "";
-			if (StringUtils.isNotBlank(toTableName)) {
-				tableName = toTableName;
-			} else if (entityType.isAnnotationPresent(SendTable.class)) {
-				tableName = entityType.getAnnotation(SendTable.class).to();
+			if (StringUtils.isNotBlank(transEntity.getToTableName())) {
+				tableName = transEntity.getToTableName();
+			} else if (transEntity.getEntityType().isAnnotationPresent(SendTable.class)) {
+				tableName = transEntity.getEntityType().getAnnotation(SendTable.class).to();
 			} else {
-				tableName = entityType.getAnnotation(Table.class).name();
+				tableName = transEntity.getEntityType().getAnnotation(Table.class).name();
 			}
 			table.put("table", tableName);
-			for (DataEntity<?> entity : list) {
-				rows.add(jsonRowBuilder(entity, fileList, requireSysColumn, requireSysColumnArr, requireTreeColumn));
+			for (DataEntity<?> entity : transEntity.getList()) {
+				rows.add(jsonRowBuilder(transEntity, fileList, entity));
 			}
 			table.put("rows", rows);
 		}
 
 		// 额外传输字符串
-		if (StringUtils.isNotBlank(extraStr)) {
-			table.put("extraStr", extraStr);
+		if (StringUtils.isNotBlank(transEntity.getExtraStr())) {
+			table.put("extraStr", transEntity.getExtraStr());
 		}
 
 		return table;
@@ -758,29 +754,28 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 解析集合，生成推送json
 	 */
-	private <T extends DataEntity<?>> JSONObject jsonTableBuilder4Push(List<T> list, Class<T> entityType, List<File> fileList, boolean requireSysColumn, String[] requireSysColumnArr,
-			boolean requireTreeColumn, String extraStr, String toTableName) throws Exception {
+	private <T extends DataEntity<?>> JSONObject jsonTableBuilder4Push(TransEntity<T> transEntity, List<File> fileList) throws Exception {
 		JSONObject table = new JSONObject();
-		if (list != null) {
+		if (transEntity.getList() != null) {
 			JSONArray rows = new JSONArray();
 			String tableName = "";
-			if (StringUtils.isNotBlank(toTableName)) {
-				tableName = toTableName;
-			} else if (entityType.isAnnotationPresent(PushTable.class)) {
-				tableName = entityType.getAnnotation(PushTable.class).to();
+			if (StringUtils.isNotBlank(transEntity.getToTableName())) {
+				tableName = transEntity.getToTableName();
+			} else if (transEntity.getEntityType().isAnnotationPresent(PushTable.class)) {
+				tableName = transEntity.getEntityType().getAnnotation(PushTable.class).to();
 			} else {
-				tableName = entityType.getAnnotation(Table.class).name();
+				tableName = transEntity.getEntityType().getAnnotation(Table.class).name();
 			}
 			table.put("table", tableName);
-			for (DataEntity<?> entity : list) {
-				rows.add(jsonRowBuilder4Push(entity, fileList, requireSysColumn, requireSysColumnArr, requireTreeColumn));
+			for (DataEntity<?> entity : transEntity.getList()) {
+				rows.add(jsonRowBuilder4Push(transEntity, fileList, entity));
 			}
 			table.put("rows", rows);
 		}
 
 		// 额外传输字符串
-		if (StringUtils.isNotBlank(extraStr)) {
-			table.put("extraStr", extraStr);
+		if (StringUtils.isNotBlank(transEntity.getExtraStr())) {
+			table.put("extraStr", transEntity.getExtraStr());
 		}
 
 		return table;
@@ -789,7 +784,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 解析实体，生成报送json
 	 */
-	private <T extends DataEntity<?>> JSONObject jsonRowBuilder(T entity, List<File> fileList, boolean requireSysColumn, String[] requireSysColumnArr, boolean requireTreeColumn) throws Exception {
+	private <T extends DataEntity<?>> JSONObject jsonRowBuilder(TransEntity<T> transEntity, List<File> fileList, DataEntity<?> entity) throws Exception {
 		// 拼接表数据json
 		// 设置主键
 		JSONObject row = new JSONObject();
@@ -807,10 +802,10 @@ public class TransmissionServiceImpl implements TransmissionService {
 		JSONObject idJson = buildIdJson(entity, rowData, css, pkList);
 
 		// 系统五个默认字段
-		sysColumnHandle(entity, requireSysColumn, requireSysColumnArr, rowData);
+		sysColumnHandle(entity, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(), rowData);
 
 		// 系统的树结构字段，继承TreeEntity才有
-		if (requireTreeColumn) {
+		if (transEntity.isRequireTreeColumn()) {
 			sysTreeColumnHandle(entity, rowData);
 		}
 
@@ -819,7 +814,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 
 		// 获取附件信息
 		// 联合主键的情况意味着id为空，框架的附件机制并不支持联合主键，所以如果id为空则不考虑附件的处理
-		if (entity.getId() != null) {
+		if (transEntity.isRequireAttachment() && entity.getId() != null) {
 			fileUploadHandle(entity, fileList, row);
 		}
 
@@ -829,8 +824,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 解析实体，生成报送json
 	 */
-	private <T extends DataEntity<?>> JSONObject jsonRowBuilder4Push(T entity, List<File> fileList, boolean requireSysColumn, String[] requireSysColumnArr, boolean requireTreeColumn)
-			throws Exception {
+	private <T extends DataEntity<?>> JSONObject jsonRowBuilder4Push(TransEntity<T> transEntity, List<File> fileList, DataEntity<?> entity) throws Exception {
 		// 拼接表数据json
 		// 设置主键
 		JSONObject row = new JSONObject();
@@ -848,10 +842,10 @@ public class TransmissionServiceImpl implements TransmissionService {
 		JSONObject idJson = buildIdJson(entity, rowData, css, pkList);
 
 		// 系统五个默认字段
-		sysColumnHandle(entity, requireSysColumn, requireSysColumnArr, rowData);
+		sysColumnHandle(entity, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(), rowData);
 
 		// 系统的树结构字段，继承TreeEntity才有
-		if (requireTreeColumn) {
+		if (transEntity.isRequireTreeColumn()) {
 			sysTreeColumnHandle(entity, rowData);
 		}
 
@@ -860,7 +854,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 
 		// 获取附件信息
 		// 联合主键的情况意味着id为空，框架的附件机制并不支持联合主键，所以如果id为空则不考虑附件的处理
-		if (entity.getId() != null) {
+		if (transEntity.isRequireAttachment() && entity.getId() != null) {
 			fileUploadHandle(entity, fileList, row);
 		}
 
@@ -1391,14 +1385,12 @@ public class TransmissionServiceImpl implements TransmissionService {
 			if (this.pushExtraFileList == null) {
 				this.pushExtraFileList = ListUtils.newArrayList();
 			}
-			table = jsonTableBuilder4Push(list, transEntity.getEntityType(), this.pushFileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(),
-					transEntity.isRequireTreeColumn(), transEntity.getExtraStr(), transEntity.getToTableName());
+			table = jsonTableBuilder4Push(transEntity, this.pushFileList);
 			// 加入批处理列表中
 			this.pushTables.add(table);
 			if (extraFileList != null) {
 				this.pushExtraFileList.addAll(extraFileList);
 			}
-
 		} else {// 发送
 			// 初始化
 			if (this.sendFileList == null) {
@@ -1410,8 +1402,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			if (this.sendExtraFileList == null) {
 				this.sendExtraFileList = ListUtils.newArrayList();
 			}
-			table = jsonTableBuilder(list, transEntity.getEntityType(), this.sendFileList, transEntity.isRequireSysColumn(), transEntity.getRequireSysColumnArr(), transEntity.isRequireTreeColumn(),
-					transEntity.getExtraStr(), transEntity.getToTableName());
+			table = jsonTableBuilder(transEntity, this.sendFileList);
 			// 加入批处理列表中
 			this.sendTables.add(table);
 			if (extraFileList != null) {
