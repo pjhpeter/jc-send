@@ -3,6 +3,7 @@ package com.jeesite.modules.transmission.entity;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.core.io.FileSystemResource;
@@ -166,7 +167,7 @@ public class Client implements Serializable {
 		// WebClient文件下载估计是我不会写，一直报错，用okhttp就可以了，哈哈！不过WebClient的rest写法比较好看，其他请求还是用Webclient吧
 		String url = "http://" + this.url + "/trans/pull/" + busType + "/" + AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY) + "/" + this.appUri;
 		System.out.println("向http://" + this.url + "发送请求");
-		OkHttpClient okHttpClient = new OkHttpClient();
+		OkHttpClient okHttpClient = new OkHttpClient.Builder().connectTimeout(3600, TimeUnit.SECONDS).readTimeout(3600, TimeUnit.SECONDS).build();
 		final Request request = new Request.Builder().url(url).build();
 		final Call call = okHttpClient.newCall(request);
 		try {
