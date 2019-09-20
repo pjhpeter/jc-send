@@ -186,6 +186,7 @@ System.out.println(result);
 ### c.接收端写拉取代码  
 ```
 //一句话，第一个参数是busType，要跟推送端的保持一致，第二个参数就是拉取成功后要在推送端执行触发器，原理跟报送一样哦
+//这一句话最好写在controller那里，不然可能会造成事物冲突！！！这一句话最好写在controller那里，不然可能会造成事物冲突！！！这一句话最好写在controller那里，不然可能会造成事物冲突！！！
 Result result = transmissionService.clientPull("UnitSecpostDetermineBook", "testTrigger");
 System.out.println(result.toString());//我不是一句话
 ```  
