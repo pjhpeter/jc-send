@@ -18,10 +18,8 @@ public class ExtraFile implements Serializable {
 	/**
 	 * 构造额外传输的文件对象
 	 * 
-	 * @param path
-	 *            文件存放的目录，注意是userfiles之后的相对目录，比如存放在userfiles/temp下，就写temp
-	 * @param fileName
-	 *            文件名
+	 * @param path     文件存放的目录，注意是userfiles之后的相对目录，比如存放在userfiles/temp下，就写temp
+	 * @param fileName 文件名
 	 */
 	public ExtraFile(String path, String fileName) {
 		this.path = path;

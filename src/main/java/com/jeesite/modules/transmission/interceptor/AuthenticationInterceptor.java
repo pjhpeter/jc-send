@@ -21,7 +21,8 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
 
 	public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
 		@SuppressWarnings("unchecked")
-		Map<String, String> pathVariables = (Map<String, String>) request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
+		Map<String, String> pathVariables = (Map<String, String>) request
+				.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
 		String token = pathVariables.get("token");
 		if (identify(token)) {
 			return true;

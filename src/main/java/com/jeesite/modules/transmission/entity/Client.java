@@ -62,12 +62,9 @@ public class Client implements Serializable {
 	/**
 	 * 发送文件
 	 * 
-	 * @param piceFilePath
-	 *            碎片文件全路径
-	 * @param point
-	 *            开始写入文件的偏移量
-	 * @param busType
-	 *            业务类型
+	 * @param piceFilePath 碎片文件全路径
+	 * @param point        开始写入文件的偏移量
+	 * @param busType      业务类型
 	 * @return 响应结果
 	 */
 	public Result send(String piceFilePath, long point, String busType) {
@@ -81,7 +78,10 @@ public class Client implements Serializable {
 		data.add("file", entity);
 		data.add("point", point);
 		data.add("busType", busType);
-		Mono<String> bodyToMono = webClient.post().uri("/trans/receive/{token}/{appUri}", AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY), this.appUri)
+		Mono<String> bodyToMono = webClient.post()
+				.uri("/trans/receive/{token}/{appUri}",
+						AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY),
+						this.appUri)
 				.body(BodyInserters.fromMultipartData(data)).retrieve().bodyToMono(String.class);
 		return JSON.toJavaObject(JSON.parseObject(bodyToMono.block()), Result.class);
 	}
@@ -89,27 +89,26 @@ public class Client implements Serializable {
 	/**
 	 * 解析数据
 	 * 
-	 * @param busType
-	 *            业务类型
-	 * @param triggerName
-	 *            接收端解析数据成功后需要执行的触发器名称
+	 * @param busType     业务类型
+	 * @param triggerName 接收端解析数据成功后需要执行的触发器名称
 	 * @return 响应结果
 	 */
 	public Result analysis(String busType, String triggerName) {
 		WebClient webClient = WebClient.create("http://" + this.url);
 		System.out.println("向http://" + this.url + "发送请求");
-		Mono<String> bodyToMono = webClient.post().uri("/trans/analysis/{busType}/{token}/{appUri}/{triggerName}", busType,
-				AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY), this.appUri, triggerName).retrieve().bodyToMono(String.class);
+		Mono<String> bodyToMono = webClient.post()
+				.uri("/trans/analysis/{busType}/{token}/{appUri}/{triggerName}", busType,
+						AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY),
+						this.appUri, triggerName)
+				.retrieve().bodyToMono(String.class);
 		return JSON.toJavaObject(JSON.parseObject(bodyToMono.block()), Result.class);
 	}
 
 	/**
 	 * 针对批量传输的数据解析
 	 * 
-	 * @param transFlag
-	 *            这一组传输的标识字符串
-	 * @param triggerName
-	 *            接收端解析数据成功后需要执行的触发器名称
+	 * @param transFlag   这一组传输的标识字符串
+	 * @param triggerName 接收端解析数据成功后需要执行的触发器名称
 	 * @return 响应结果
 	 */
 	public Result analysisMulti(String transFlag, String triggerName) {
@@ -118,56 +117,59 @@ public class Client implements Serializable {
 		}
 		WebClient webClient = WebClient.create("http://" + this.url);
 		System.out.println("向http://" + this.url + "发送请求");
-		Mono<String> bodyToMono = webClient.post().uri("/trans/analysis_multi/{transFlag}/{token}/{appUri}/{triggerName}", transFlag,
-				AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY), this.appUri, triggerName).retrieve().bodyToMono(String.class);
+		Mono<String> bodyToMono = webClient.post()
+				.uri("/trans/analysis_multi/{transFlag}/{token}/{appUri}/{triggerName}", transFlag,
+						AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY),
+						this.appUri, triggerName)
+				.retrieve().bodyToMono(String.class);
 		return JSON.toJavaObject(JSON.parseObject(bodyToMono.block()), Result.class);
 	}
 
 	/**
 	 * 清除临时文件
 	 * 
-	 * @param busType
-	 *            业务类型
+	 * @param busType 业务类型
 	 * @return 响应结果
 	 */
 	public Result cleanTempFile(String busType) {
 		WebClient webClient = WebClient.create("http://" + this.url);
 		System.out.println("向http://" + this.url + "发送请求");
-		Mono<String> bodyToMono = webClient.post()
-				.uri("/trans/clean/{busType}/{token}/{appUri}", busType, AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY), this.appUri).retrieve()
-				.bodyToMono(String.class);
+		Mono<String> bodyToMono = webClient.post().uri("/trans/clean/{busType}/{token}/{appUri}", busType,
+				AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY), this.appUri)
+				.retrieve().bodyToMono(String.class);
 		return JSON.toJavaObject(JSON.parseObject(bodyToMono.block()), Result.class);
 	}
 
 	/**
 	 * 检测是否有可拉取的数据
 	 * 
-	 * @param busType
-	 *            业务类型
+	 * @param busType 业务类型
 	 * @return 响应结果
 	 */
 	public Result hasPullData(String busType) {
 		WebClient webClient = WebClient.create("http://" + this.url);
 		System.out.println("向http://" + this.url + "发送请求");
-		Mono<String> bodyToMono = webClient.get()
-				.uri("/trans/has_pull_data/{busType}/{token}/{appUri}", busType, AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY), this.appUri).retrieve()
-				.bodyToMono(String.class);
+		Mono<String> bodyToMono = webClient.get().uri("/trans/has_pull_data/{busType}/{token}/{appUri}", busType,
+				AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY), this.appUri)
+				.retrieve().bodyToMono(String.class);
 		return JSON.toJavaObject(JSON.parseObject(bodyToMono.block()), Result.class);
 	}
 
 	/**
 	 * 拉取数据
 	 * 
-	 * @param busType
-	 *            业务类型
+	 * @param busType 业务类型
 	 * @return 响应结果
 	 */
 	public Result pull(String busType) {
 		// 拉取文件
 		// WebClient文件下载估计是我不会写，一直报错，用okhttp就可以了，哈哈！不过WebClient的rest写法比较好看，其他请求还是用Webclient吧
-		String url = "http://" + this.url + "/trans/pull/" + busType + "/" + AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY) + "/" + this.appUri;
+		String url = "http://" + this.url + "/trans/pull/" + busType + "/"
+				+ AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY) + "/"
+				+ this.appUri;
 		System.out.println("向http://" + this.url + "发送请求");
-		OkHttpClient okHttpClient = new OkHttpClient.Builder().connectTimeout(3600, TimeUnit.SECONDS).readTimeout(3600, TimeUnit.SECONDS).build();
+		OkHttpClient okHttpClient = new OkHttpClient.Builder().connectTimeout(3600, TimeUnit.SECONDS)
+				.readTimeout(3600, TimeUnit.SECONDS).build();
 		final Request request = new Request.Builder().url(url).build();
 		final Call call = okHttpClient.newCall(request);
 		try {
@@ -191,18 +193,19 @@ public class Client implements Serializable {
 	/**
 	 * 清空推送的临时文件
 	 * 
-	 * @param busType
-	 *            业务类型
-	 * @param triggerName
-	 *            拉取数据成功后要执行的触发器注入名称
+	 * @param busType     业务类型
+	 * @param triggerName 拉取数据成功后要执行的触发器注入名称
 	 * @return 响应结果
 	 */
 	public Result cleanPushTempFile(String busType, String triggerName) {
 		// 拉取成功，删除远端临时文件
 		WebClient webClient = WebClient.create("http://" + this.url);
 		System.out.println("向http://" + this.url + "发送请求");
-		Mono<String> bodyToMono = webClient.post().uri("/trans/pull_success/{busType}/{token}/{appUri}/{triggerName}", busType,
-				AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY), this.appUri, triggerName).retrieve().bodyToMono(String.class);
+		Mono<String> bodyToMono = webClient.post()
+				.uri("/trans/pull_success/{busType}/{token}/{appUri}/{triggerName}", busType,
+						AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY),
+						this.appUri, triggerName)
+				.retrieve().bodyToMono(String.class);
 		return JSON.toJavaObject(JSON.parseObject(bodyToMono.block()), Result.class);
 	}
 

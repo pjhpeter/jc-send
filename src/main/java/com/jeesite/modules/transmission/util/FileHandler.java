@@ -32,10 +32,8 @@ public class FileHandler {
 	/**
 	 * 拆分文件
 	 * 
-	 * @param targetFile
-	 *            需要拆分的文件全路径
-	 * @param busType
-	 *            业务类型，用于记录这次数据传输是哪个业务，随意定义
+	 * @param targetFile 需要拆分的文件全路径
+	 * @param busType    业务类型，用于记录这次数据传输是哪个业务，随意定义
 	 * @return 碎片文件个数
 	 * @throws Exception
 	 */
@@ -95,12 +93,9 @@ public class FileHandler {
 	/**
 	 * 合并文件
 	 * 
-	 * @param targetFile
-	 *            合并后大文件全名
-	 * @param piceFile
-	 *            碎片文件字节流
-	 * @param point
-	 *            起始位置
+	 * @param targetFile 合并后大文件全名
+	 * @param piceFile   碎片文件字节流
+	 * @param point      起始位置
 	 * @return 是否成功
 	 */
 	public boolean mergeFile(String targetFile, byte[] piceFile, long point) {
