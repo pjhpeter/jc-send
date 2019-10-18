@@ -36,6 +36,10 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
 	 */
 	private boolean identify(String token) {
 		String s = AesUtils.decode(token, Constant.TOKEN_KEY);
+		if (Long.valueOf(s.substring(s.lastIndexOf("_") + 1)) + 10000 < System.currentTimeMillis()) {
+			return false;
+		}
 		return s.substring(0, s.lastIndexOf("_")).equals(Constant.TOKEN);
 	}
+
 }
