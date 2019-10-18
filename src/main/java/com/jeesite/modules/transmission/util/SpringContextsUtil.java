@@ -42,10 +42,8 @@ public class SpringContextsUtil implements ApplicationContextAware {
 	/**
 	 * 获取类型为requiredType的对象 如果bean不能被类型转换，相应的异常将会被抛出（BeanNotOfRequiredTypeException）
 	 * 
-	 * @param name
-	 *            bean注册名
-	 * @param requiredType
-	 *            返回对象类型
+	 * @param name         bean注册名
+	 * @param requiredType 返回对象类型
 	 * @return Object 返回requiredType类型对象
 	 * @throws BeansException
 	 */

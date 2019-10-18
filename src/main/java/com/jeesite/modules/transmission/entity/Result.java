@@ -21,12 +21,9 @@ public class Result implements Serializable {
 	/**
 	 * 构造函数
 	 * 
-	 * @param success
-	 *            是否成功
-	 * @param msg
-	 *            响应信息
-	 * @param data
-	 *            返回的数据
+	 * @param success 是否成功
+	 * @param msg     响应信息
+	 * @param data    返回的数据
 	 */
 	public Result(boolean success, String msg, String data) {
 		this.success = success;
@@ -37,10 +34,8 @@ public class Result implements Serializable {
 	/**
 	 * 构造函数
 	 * 
-	 * @param success
-	 *            是否成功
-	 * @param msg
-	 *            响应信息
+	 * @param success 是否成功
+	 * @param msg     响应信息
 	 */
 	public Result(boolean success, String msg) {
 		this.success = success;

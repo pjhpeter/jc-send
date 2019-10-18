@@ -10,9 +10,12 @@ import com.jeesite.common.mybatis.annotation.Table;
  * @author 彭嘉辉
  *
  */
-@Table(name = "trans_temp_file", columns = { @Column(name = "id", attrName = "id", label = "id", isPK = true), @Column(name = "bus_type", attrName = "busType", label = "业务类型，用于记录这次数据传输是哪个业务，随意定义"),
-		@Column(name = "path", attrName = "path", label = "临时碎片文件存放目录的绝对路径"), @Column(name = "file_name", attrName = "fileName", label = "拆分前的文件名"),
-		@Column(name = "pice_file_name", attrName = "piceFileName", label = "临时碎片文件名"), @Column(name = "point", attrName = "point", label = "文件写入起始偏移量") })
+@Table(name = "trans_temp_file", columns = { @Column(name = "id", attrName = "id", label = "id", isPK = true),
+		@Column(name = "bus_type", attrName = "busType", label = "业务类型，用于记录这次数据传输是哪个业务，随意定义"),
+		@Column(name = "path", attrName = "path", label = "临时碎片文件存放目录的绝对路径"),
+		@Column(name = "file_name", attrName = "fileName", label = "拆分前的文件名"),
+		@Column(name = "pice_file_name", attrName = "piceFileName", label = "临时碎片文件名"),
+		@Column(name = "point", attrName = "point", label = "文件写入起始偏移量") })
 public class TempFile extends DataEntity<TempFile> {
 
 	private static final long serialVersionUID = 2656195373716391093L;

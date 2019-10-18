@@ -69,7 +69,8 @@ public class DataBaseHandler {
 			idMap.keySet().forEach(key -> {
 				queryCondition.add(key + " = '" + idMap.get(key) + "'");
 			});
-			String querySQL = "SELECT COUNT(0) FROM " + tableName + " WHERE " + StringUtils.join(queryCondition.toArray(), " AND ");
+			String querySQL = "SELECT COUNT(0) FROM " + tableName + " WHERE "
+					+ StringUtils.join(queryCondition.toArray(), " AND ");
 			System.out.println("查询语句：" + querySQL);
 			resultSet = this.statement.executeQuery(querySQL);
 			if (resultSet.next() && resultSet.getInt(1) > 0) {
@@ -92,12 +93,9 @@ public class DataBaseHandler {
 	/**
 	 * 处理数据表数据
 	 * 
-	 * @param tableName
-	 *            表名
-	 * @param rows
-	 *            所有行数据
-	 * @param unZipDir
-	 *            解压后的目录
+	 * @param tableName 表名
+	 * @param rows      所有行数据
+	 * @param unZipDir  解压后的目录
 	 * @throws SQLException
 	 */
 	public void setData(String tableName, JSONArray rows, String unZipDir) throws Exception {
@@ -147,7 +145,8 @@ public class DataBaseHandler {
 						String fileExtension = fileEntity.getFileExtension();
 						String attachmentName = fileId + "." + fileExtension;
 						String fileUploadPath = Global.getUserfilesBaseDir("fileupload");
-						FileUtils.copyFileCover(unZipDir + File.separator + attachmentName, fileUploadPath + File.separator + filePath + File.separator + attachmentName, true);
+						FileUtils.copyFileCover(unZipDir + File.separator + attachmentName,
+								fileUploadPath + File.separator + filePath + File.separator + attachmentName, true);
 					});
 				}
 
@@ -215,7 +214,8 @@ public class DataBaseHandler {
 				valueList.add("'" + column.get("value") + "'");
 			}
 		});
-		insertSQL = insertSQL + " (" + StringUtils.join(columnList.toArray(), ",") + ") VALUES (" + StringUtils.join(valueList.toArray(), ",") + ")";
+		insertSQL = insertSQL + " (" + StringUtils.join(columnList.toArray(), ",") + ") VALUES ("
+				+ StringUtils.join(valueList.toArray(), ",") + ")";
 		System.out.println("插入语句：" + insertSQL);
 		return insertSQL;
 	}
@@ -236,12 +236,14 @@ public class DataBaseHandler {
 			} else if (column.getString("type").equals("number")) {// 数字
 				valueList.add(column.getString("to") + " = " + column.get("value").toString());
 			} else if (column.getString("type").equals("date")) {// 日期
-				valueList.add(column.getString("to") + " = '" + DateUtils.formatDate(column.getLong("value"), "yyyy-MM-dd HH:mm:ss") + "'");
+				valueList.add(column.getString("to") + " = '"
+						+ DateUtils.formatDate(column.getLong("value"), "yyyy-MM-dd HH:mm:ss") + "'");
 			} else {// 布尔值和字符串
 				valueList.add(column.getString("to") + " = '" + column.get("value") + "'");
 			}
 		});
-		updateSQL = updateSQL + " " + StringUtils.join(valueList.toArray(), ",") + " WHERE " + StringUtils.join(idList.toArray(), " AND ");
+		updateSQL = updateSQL + " " + StringUtils.join(valueList.toArray(), ",") + " WHERE "
+				+ StringUtils.join(idList.toArray(), " AND ");
 		System.out.println("更新语句：" + updateSQL);
 		return updateSQL;
 	}

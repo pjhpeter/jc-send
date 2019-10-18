@@ -35,8 +35,7 @@ public class TempFileService extends CrudService<TempFileDao, TempFile> {
 	/**
 	 * 插入碎片临时文件信息，直接用框架的api要等到所有操作完成才提交数据，影响后面操作，所以只能自己写jdbc
 	 * 
-	 * @param tempFileList
-	 *            碎片临时文件对象列表
+	 * @param tempFileList 碎片临时文件对象列表
 	 * @return 加上id的碎片临时文件对象列表
 	 */
 	public List<TempFile> insertBatch(List<TempFile> tempFileList) {
@@ -49,8 +48,10 @@ public class TempFileService extends CrudService<TempFileDao, TempFile> {
 			statement = connection.createStatement();
 			for (TempFile tempFile : tempFileList) {
 				String id = IdGen.nextId();
-				String insertSql = "INSERT INTO trans_temp_file (id,bus_type,path,file_name,pice_file_name,point) VALUES ('" + id + "','" + tempFile.getBusType() + "','" + tempFile.getPath() + "','"
-						+ tempFile.getFileName() + "','" + tempFile.getPiceFileName() + "'," + tempFile.getPoint() + ")";
+				String insertSql = "INSERT INTO trans_temp_file (id,bus_type,path,file_name,pice_file_name,point) VALUES ('"
+						+ id + "','" + tempFile.getBusType() + "','" + tempFile.getPath() + "','"
+						+ tempFile.getFileName() + "','" + tempFile.getPiceFileName() + "'," + tempFile.getPoint()
+						+ ")";
 				this.statement.addBatch(insertSql);
 				tempFile.setId(id);
 				returnList.add(tempFile);
