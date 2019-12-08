@@ -95,18 +95,20 @@ public interface TransmissionService {
 	 * 
 	 * @param file    上传的文件
 	 * @param busType 业务类型，要与导出端保持一直
+	 * @param triggerName 触发器名称
 	 * @return 结果
 	 */
-	Result importData(MultipartFile file, String busType);
+	Result importData(MultipartFile file, String busType, String triggerName);
 
 	/**
 	 * 导入批量传输数据
 	 * 
 	 * @param file      上传的文件
 	 * @param transFlag 传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
+	 * @param triggerName 触发器名称
 	 * @return 结果
 	 */
-	Result importDataBatch(MultipartFile file, String transFlag);
+	Result importDataBatch(MultipartFile file, String transFlag, String triggerName);
 
 	/**
 	 * 推送数据

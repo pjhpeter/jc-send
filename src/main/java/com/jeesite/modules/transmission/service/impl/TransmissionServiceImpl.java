@@ -280,7 +280,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	}
 
 	@Override
-	public Result importData(MultipartFile file, String busType) {
+	public Result importData(MultipartFile file, String busType, String triggerName) {
 		String tempDir = Global.getUserfilesBaseDir(Constant.TemplDir.IMPORT_TEMP);
 		String fileName = file.getOriginalFilename();
 		String zipName = tempDir + File.separator + fileName;
@@ -293,6 +293,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			FileUtils.unZipFiles(zipName, unZipDir);
 			// 解析数据
 			JSONArray tables = doAnalysis(unZipDir, jsonFileName);
+			excuteTrigger(busType, triggerName, tables);
 			return new Result(true, Constant.Message.导入成功, tables.toJSONString());
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -301,7 +302,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	}
 
 	@Override
-	public Result importDataBatch(MultipartFile file, String transFlag) {
+	public Result importDataBatch(MultipartFile file, String transFlag, String triggerName) {
 		String tempDir = Global.getUserfilesBaseDir(Constant.TemplDir.IMPORT_TEMP);
 		String fileName = file.getOriginalFilename();
 		String zipName = tempDir + File.separator + fileName;
@@ -314,6 +315,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			FileUtils.unZipFiles(zipName, unZipDir);
 			// 解析数据
 			JSONArray tables = doAnalysisMulti(unZipDir, jsonFileName);
+			excuteTrigger(transFlag, triggerName, tables);
 			return new Result(true, Constant.Message.导入成功, tables.toJSONString());
 		} catch (Exception e) {
 			e.printStackTrace();
