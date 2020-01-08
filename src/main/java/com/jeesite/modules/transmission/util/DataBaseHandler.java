@@ -111,11 +111,17 @@ public class DataBaseHandler {
 				if (isNewRecord(tableName, id.getInnerMap())) {
 					// 插入数据
 					System.out.println("新增");
-					this.statement.executeUpdate(insertSQLBuilder(tableName, row));
+					String sql = insertSQLBuilder(tableName, row);
+					if(StringUtils.isNotBlank(sql)) {
+						this.statement.executeUpdate(sql);
+					}
 				} else {
 					// 更新数据
 					System.out.println("更新");
-					this.statement.executeUpdate(updateSQLBuilder(tableName, row));
+					String sql = updateSQLBuilder(tableName, row);
+					if(StringUtils.isNotBlank(sql)) {
+						this.statement.executeUpdate(sql);
+					}
 				}
 
 				// 处理附件
@@ -214,10 +220,13 @@ public class DataBaseHandler {
 				valueList.add("'" + column.get("value") + "'");
 			}
 		});
-		insertSQL = insertSQL + " (" + StringUtils.join(columnList.toArray(), ",") + ") VALUES ("
-				+ StringUtils.join(valueList.toArray(), ",") + ")";
-		System.out.println("插入语句：" + insertSQL);
-		return insertSQL;
+		if(columnList.size() > 0) {
+			insertSQL = insertSQL + " (" + StringUtils.join(columnList.toArray(), ",") + ") VALUES ("
+					+ StringUtils.join(valueList.toArray(), ",") + ")";
+			System.out.println("插入语句：" + insertSQL);
+			return insertSQL;
+		}
+		return "";
 	}
 
 	/*
@@ -242,10 +251,13 @@ public class DataBaseHandler {
 				valueList.add(column.getString("to") + " = '" + column.get("value") + "'");
 			}
 		});
-		updateSQL = updateSQL + " " + StringUtils.join(valueList.toArray(), ",") + " WHERE "
-				+ StringUtils.join(idList.toArray(), " AND ");
-		System.out.println("更新语句：" + updateSQL);
-		return updateSQL;
+		if(valueList.size() > 0) {
+			updateSQL = updateSQL + " " + StringUtils.join(valueList.toArray(), ",") + " WHERE "
+					+ StringUtils.join(idList.toArray(), " AND ");
+			System.out.println("更新语句：" + updateSQL);
+			return updateSQL;
+		}
+		return "";
 	}
 
 }
