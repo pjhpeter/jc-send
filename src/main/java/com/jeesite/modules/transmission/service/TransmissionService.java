@@ -61,6 +61,14 @@ public interface TransmissionService {
 	boolean clientHasRenewal(String busType);
 
 	/**
+	 * 检测有无可拉取的数据
+	 * 
+	 * @param busType 业务类型
+	 * @return 有无
+	 */
+	boolean clientHasPullData(String busType);
+
+	/**
 	 * 向服务器拉取数据
 	 * 
 	 * @param busType     应用类型
@@ -77,8 +85,7 @@ public interface TransmissionService {
 	 * @param request        请求对象
 	 * @param response       响应对象
 	 */
-	<T extends DataEntity<?>> void export(TransEntity<T> transEntity, String exportFileName, HttpServletRequest request,
-			HttpServletResponse response);
+	<T extends DataEntity<?>> void export(TransEntity<T> transEntity, String exportFileName, HttpServletRequest request, HttpServletResponse response);
 
 	/**
 	 * 导出批量传输数据
@@ -93,8 +100,8 @@ public interface TransmissionService {
 	/**
 	 * 导入离线传输数据
 	 * 
-	 * @param file    上传的文件
-	 * @param busType 业务类型，要与导出端保持一直
+	 * @param file        上传的文件
+	 * @param busType     业务类型，要与导出端保持一直
 	 * @param triggerName 触发器名称
 	 * @return 结果
 	 */
@@ -103,8 +110,8 @@ public interface TransmissionService {
 	/**
 	 * 导入批量传输数据
 	 * 
-	 * @param file      上传的文件
-	 * @param transFlag 传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
+	 * @param file        上传的文件
+	 * @param transFlag   传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
 	 * @param triggerName 触发器名称
 	 * @return 结果
 	 */

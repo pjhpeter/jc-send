@@ -191,6 +191,12 @@ public class TransmissionServiceImpl implements TransmissionService {
 		}
 		return false;
 	}
+	
+	@Override
+	public boolean clientHasPullData(String busType) {
+		Client client = new Client();
+		return this.checkPullData(busType, client);
+	}
 
 	@Override
 	public Result clientPull(String busType, String triggerName) {
