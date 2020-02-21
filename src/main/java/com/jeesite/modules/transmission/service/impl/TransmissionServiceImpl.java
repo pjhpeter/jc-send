@@ -297,7 +297,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			JSONArray tables = null;
 			try {
 				tables = doAnalysis(unZipDir, jsonFileName);
-			}catch(Exception e) {
+			} catch (Exception e) {
 				tables = doAnalysisMulti(unZipDir, jsonFileName);
 			}
 			excuteTrigger(busType, triggerName, tables);
@@ -307,6 +307,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			return new Result(false, Constant.Message.导入失败);
 		} finally {
 			FileUtils.deleteDirectory(unZipDir);
+			FileUtils.deleteFile(zipName);
 		}
 	}
 
@@ -329,6 +330,9 @@ public class TransmissionServiceImpl implements TransmissionService {
 		} catch (Exception e) {
 			e.printStackTrace();
 			return new Result(false, Constant.Message.导入失败);
+		} finally {
+			FileUtils.deleteDirectory(unZipDir);
+			FileUtils.deleteFile(zipName);
 		}
 	}
 
