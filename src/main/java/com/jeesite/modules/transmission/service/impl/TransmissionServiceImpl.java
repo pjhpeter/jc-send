@@ -167,8 +167,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		String zipName = tempPath + File.separator + appUri + transFlag + ".zip";
 
 		// 创建压缩包
-		buildZip(this.sendExtraFileList, tempPath, jsonPath, jsonFileName, zipName, this.sendFileList,
-				this.sendTables.toJSONString());
+		buildZip(this.sendExtraFileList, tempPath, jsonPath, jsonFileName, zipName, this.sendFileList, this.sendTables.toJSONString());
 
 		// 分割压缩包文件
 		List<TempFile> tempFileList = this.fileHandler.splitFile(zipName, transFlag);
@@ -191,7 +190,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		}
 		return false;
 	}
-	
+
 	@Override
 	public boolean clientHasPullData(String busType) {
 		Client client = new Client();
@@ -212,15 +211,13 @@ public class TransmissionServiceImpl implements TransmissionService {
 				String pullFileDir = Global.getUserfilesBaseDir(Constant.TemplDir.PULL_TEMP + "_" + busType);
 				String pullFileName = busType + ".zip";
 				String unZipDir = pullFileDir + File.separator + busType;
-				FileUtils.unZipFiles(pullFileDir + File.separator + pullFileName,
-						pullFileDir + File.separator + busType);
+				FileUtils.unZipFiles(pullFileDir + File.separator + pullFileName, pullFileDir + File.separator + busType);
 				try {
 					File unZipDirFile = new File(unZipDir);
 					File[] listFiles = unZipDirFile.listFiles();
 					JSONArray tables = new JSONArray();
 					for (File file : listFiles) {
-						String descFileName = unZipDir + File.separator
-								+ file.getName().substring(0, file.getName().lastIndexOf(".") + 1);
+						String descFileName = unZipDir + File.separator + file.getName().substring(0, file.getName().lastIndexOf(".") + 1);
 						FileUtils.unZipFiles(file.getAbsolutePath(), descFileName);
 						tables.addAll(doAnalysisMulti(descFileName, busType + ".json"));
 					}
@@ -242,8 +239,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	}
 
 	@Override
-	public <T extends DataEntity<?>> void export(TransEntity<T> transEntity, String exportFileName,
-			HttpServletRequest request, HttpServletResponse response) {
+	public <T extends DataEntity<?>> void export(TransEntity<T> transEntity, String exportFileName, HttpServletRequest request, HttpServletResponse response) {
 		List<T> list = null;
 		List<ExtraFile> extraFileList = null;
 		if (transEntity.getEntity() != null) {
@@ -290,7 +286,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		String tempDir = Global.getUserfilesBaseDir(Constant.TemplDir.IMPORT_TEMP);
 		String fileName = file.getOriginalFilename();
 		String zipName = tempDir + File.separator + fileName;
-		String unZipDir = tempDir;
+		String unZipDir = tempDir + File.separator + fileName.substring(0, fileName.lastIndexOf("."));
 		String jsonFileName = busType + ".json";
 		FileUtils.createDirectory(tempDir);
 		try {
@@ -298,12 +294,19 @@ public class TransmissionServiceImpl implements TransmissionService {
 			// 解压
 			FileUtils.unZipFiles(zipName, unZipDir);
 			// 解析数据
-			JSONArray tables = doAnalysis(unZipDir, jsonFileName);
+			JSONArray tables = null;
+			try {
+				tables = doAnalysis(unZipDir, jsonFileName);
+			}catch(Exception e) {
+				tables = doAnalysisMulti(unZipDir, jsonFileName);
+			}
 			excuteTrigger(busType, triggerName, tables);
 			return new Result(true, Constant.Message.导入成功, tables.toJSONString());
 		} catch (Exception e) {
 			e.printStackTrace();
 			return new Result(false, Constant.Message.导入失败);
+		} finally {
+			FileUtils.deleteDirectory(unZipDir);
 		}
 	}
 
@@ -330,8 +333,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	}
 
 	@Override
-	public void exportBatch(String transFlag, String exportFileName, HttpServletRequest request,
-			HttpServletResponse response) {
+	public void exportBatch(String transFlag, String exportFileName, HttpServletRequest request, HttpServletResponse response) {
 		// 临时目录
 		String tempPath = Global.getUserfilesBaseDir(Constant.TemplDir.EXPORT_TEMP + transFlag);
 		// 存放json数据文件和传输相关附件文件的目录
@@ -346,8 +348,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		}
 
 		// 将所有要传输的数据压缩成压缩包
-		buildZip(this.sendExtraFileList, tempPath, jsonPath, jsonFileName, zipName, this.sendFileList,
-				this.sendTables.toJSONString());
+		buildZip(this.sendExtraFileList, tempPath, jsonPath, jsonFileName, zipName, this.sendFileList, this.sendTables.toJSONString());
 
 		// 下载
 		FileUtils.downFile(new File(zipName), request, response);
@@ -487,8 +488,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	 * @param response 响应对象
 	 */
 	public void serverPull(String appUri, String busType, HttpServletRequest request, HttpServletResponse response) {
-		List<PullDataFlag> pullDataFlagList = pullDataFlagService
-				.findList(new PullDataFlag(null, appUri, busType, null));
+		List<PullDataFlag> pullDataFlagList = pullDataFlagService.findList(new PullDataFlag(null, appUri, busType, null));
 		String tempFileDir = Global.getUserfilesBaseDir(Constant.TemplDir.WEIT_FOR_PULL_TEMP);
 		String pullDir = tempFileDir + File.separator + appUri + busType;
 		String pullFileName = tempFileDir + File.separator + appUri + busType + ".zip";
@@ -513,8 +513,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		// 删除待拉取的临时文件
 		String tempFileDir = Global.getUserfilesBaseDir(Constant.TemplDir.WEIT_FOR_PULL_TEMP);
 		String tempFileName = appUri + busType + ".zip";
-		if (FileUtils.deleteFile(tempFileDir + File.separator + tempFileName)
-				&& FileUtils.deleteQuietly(new File(tempFileDir + File.separator + appUri + busType))) {
+		if (FileUtils.deleteFile(tempFileDir + File.separator + tempFileName) && FileUtils.deleteQuietly(new File(tempFileDir + File.separator + appUri + busType))) {
 			// 删除数据库记录
 			List<PullDataFlag> pullDataFlagList = pullDataFlagService.findList(pullDataFlag);
 			for (PullDataFlag pullDataFlag2 : pullDataFlagList) {
@@ -548,11 +547,9 @@ public class TransmissionServiceImpl implements TransmissionService {
 			tables.add(json);
 			System.out.println(tables);
 			FileUtils.createDirectory(tempPath);
-			buildZip(transEntity.getExtraFileList(), busTypeTempPath, jsonPath, jsonFileName, zipName, fileList,
-					tables.toJSONString());
+			buildZip(transEntity.getExtraFileList(), busTypeTempPath, jsonPath, jsonFileName, zipName, fileList, tables.toJSONString());
 			// 记录待拉取的标识
-			PullDataFlag entity = new PullDataFlag(pullDataFlagId, appUri, transEntity.getBusType(),
-					tables.toJSONString());
+			PullDataFlag entity = new PullDataFlag(pullDataFlagId, appUri, transEntity.getBusType(), tables.toJSONString());
 			entity.setIsNewRecord(true);
 			pullDataFlagService.save(entity);
 			FileUtils.deleteQuietly(new File(jsonPath));
@@ -574,8 +571,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			String zipName = busTypeTempPath + File.separator + pullDataFlagId + "_" + transFlag + ".zip";
 			System.out.println(this.pushTables);
 			FileUtils.createDirectory(tempPath);
-			buildZip(this.pushExtraFileList, busTypeTempPath, jsonPath, jsonFileName, zipName, this.pushFileList,
-					this.pushTables.toJSONString());
+			buildZip(this.pushExtraFileList, busTypeTempPath, jsonPath, jsonFileName, zipName, this.pushFileList, this.pushTables.toJSONString());
 			// 记录待拉取的标识
 			PullDataFlag entity = new PullDataFlag(pullDataFlagId, appUri, transFlag, this.pushTables.toJSONString());
 			entity.setIsNewRecord(true);
@@ -614,8 +610,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			// 生成json数据字符串和收集报送的附件
 			JSONObject json = jsonTableBuilder(transEntity, fileList, transEntity.getList());
 			System.out.println(json);
-			buildZip(transEntity.getExtraFileList(), tempPath, jsonPath, jsonFileName, zipName, fileList,
-					json.toJSONString());
+			buildZip(transEntity.getExtraFileList(), tempPath, jsonPath, jsonFileName, zipName, fileList, json.toJSONString());
 			// 将zip文件拆分成若干小块
 			List<TempFile> tempFileList = fileHandler.splitFile(zipName, busType);
 			// 发送文件
@@ -632,8 +627,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 生成需要传输的压缩吧
 	 */
-	private void buildZip(List<ExtraFile> extraFileList, String tempPath, String jsonPath, String jsonFileName,
-			String zipName, List<File> fileList, String jsonStr) {
+	private void buildZip(List<ExtraFile> extraFileList, String tempPath, String jsonPath, String jsonFileName, String zipName, List<File> fileList, String jsonStr) {
 		// 加密数据
 		String aesStr = AesUtils.encode(jsonStr, Constant.FILE_KEY);
 		// 将json数据字符串写入文件中
@@ -648,6 +642,19 @@ public class TransmissionServiceImpl implements TransmissionService {
 		// 将所有东西压缩成zip并加密
 		FileUtils.createFile(zipName);
 		FileUtils.zipFiles(jsonPath, "*", zipName);
+//		ZipParameters zipParameters = new ZipParameters();
+//		zipParameters.setCompressionMethod(CompressionMethod.DEFLATE);
+//		zipParameters.setCompressionLevel(CompressionLevel.NORMAL);
+//		zipParameters.setEncryptFiles(true);
+//		zipParameters.setEncryptionMethod(EncryptionMethod.ZIP_STANDARD);
+
+//		ZipFile zipFile = new ZipFile(zipName, "tq26556570".toCharArray());
+//		File jsonPathFile = new File(jsonPath);
+//		try {
+//			zipFile.addFolder(jsonPathFile, zipParameters);
+//		} catch (ZipException e) {
+//			e.printStackTrace();
+//		}
 	}
 
 	/*
@@ -660,10 +667,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			FileUtils.createDirectory(extraFilesTempDir);
 			extraFileList.forEach(extraFile -> {
 				FileUtils.createDirectory(extraFilesTempDir + File.separator + extraFile.getPath());
-				FileUtils.copyFile(
-						Global.getUserfilesBaseDir(extraFile.getPath()) + File.separator + extraFile.getFileName(),
-						extraFilesTempDir + File.separator + extraFile.getPath() + File.separator
-								+ extraFile.getFileName());
+				FileUtils.copyFile(Global.getUserfilesBaseDir(extraFile.getPath()) + File.separator + extraFile.getFileName(), extraFilesTempDir + File.separator + extraFile.getPath() + File.separator + extraFile.getFileName());
 			});
 		}
 	}
@@ -671,8 +675,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 断点续传
 	 */
-	private <T extends DataEntity<?>> Result renewal(Client client, String busType, String triggerName,
-			boolean isMulti) {
+	private <T extends DataEntity<?>> Result renewal(Client client, String busType, String triggerName, boolean isMulti) {
 		// 获取临时文件信息
 		TempFile entity = new TempFile();
 		entity.setBusType(busType);
@@ -727,8 +730,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 解析集合，生成报送json
 	 */
-	private <T extends DataEntity<?>> JSONObject jsonTableBuilder(TransEntity<T> transEntity, List<File> fileList,
-			List<T> list) throws Exception {
+	private <T extends DataEntity<?>> JSONObject jsonTableBuilder(TransEntity<T> transEntity, List<File> fileList, List<T> list) throws Exception {
 		JSONObject table = new JSONObject();
 		if (list != null) {
 			JSONArray rows = new JSONArray();
@@ -758,8 +760,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 解析集合，生成推送json
 	 */
-	private <T extends DataEntity<?>> JSONObject jsonTableBuilder4Push(TransEntity<T> transEntity, List<File> fileList,
-			List<T> list) throws Exception {
+	private <T extends DataEntity<?>> JSONObject jsonTableBuilder4Push(TransEntity<T> transEntity, List<File> fileList, List<T> list) throws Exception {
 		JSONObject table = new JSONObject();
 		if (list != null) {
 			JSONArray rows = new JSONArray();
@@ -789,8 +790,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 解析实体，生成报送json
 	 */
-	private <T extends DataEntity<?>> JSONObject jsonRowBuilder(TransEntity<T> transEntity, List<File> fileList,
-			DataEntity<?> entity) throws Exception {
+	private <T extends DataEntity<?>> JSONObject jsonRowBuilder(TransEntity<T> transEntity, List<File> fileList, DataEntity<?> entity) throws Exception {
 		// 拼接表数据json
 		// 设置主键
 		JSONObject row = new JSONObject();
@@ -830,8 +830,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 解析实体，生成报送json
 	 */
-	private <T extends DataEntity<?>> JSONObject jsonRowBuilder4Push(TransEntity<T> transEntity, List<File> fileList,
-			DataEntity<?> entity) throws Exception {
+	private <T extends DataEntity<?>> JSONObject jsonRowBuilder4Push(TransEntity<T> transEntity, List<File> fileList, DataEntity<?> entity) throws Exception {
 		// 拼接表数据json
 		// 设置主键
 		JSONObject row = new JSONObject();
@@ -869,9 +868,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	}
 
 	@SuppressWarnings("rawtypes")
-	private <T extends DataEntity<?>> void buildSendRow(T entity, JSONArray rowData, Class<? extends DataEntity> css,
-			List<Field> pkList, Field field)
-			throws IntrospectionException, IllegalAccessException, InvocationTargetException {
+	private <T extends DataEntity<?>> void buildSendRow(T entity, JSONArray rowData, Class<? extends DataEntity> css, List<Field> pkList, Field field) throws IntrospectionException, IllegalAccessException, InvocationTargetException {
 		if (field.isAnnotationPresent(SendField.class)) {
 			SendField annotation = field.getAnnotation(SendField.class);
 			// 获取接收方对应数据库列名
@@ -920,9 +917,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	}
 
 	@SuppressWarnings("rawtypes")
-	private <T extends DataEntity<?>> JSONObject buildIdJson(T entity, JSONArray rowData,
-			Class<? extends DataEntity> css, List<Field> pkList)
-			throws IntrospectionException, IllegalAccessException, InvocationTargetException {
+	private <T extends DataEntity<?>> JSONObject buildIdJson(T entity, JSONArray rowData, Class<? extends DataEntity> css, List<Field> pkList) throws IntrospectionException, IllegalAccessException, InvocationTargetException {
 		JSONObject idJson = new JSONObject();
 		if (pkList.size() > 0) {// 联合组建
 			for (Field field : pkList) {
@@ -957,8 +952,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		return idJson;
 	}
 
-	private <T extends DataEntity<?>> void sysColumnHandle(T entity, boolean requireSysColumn,
-			String[] requireSysColumnArr, JSONArray rowData) {
+	private <T extends DataEntity<?>> void sysColumnHandle(T entity, boolean requireSysColumn, String[] requireSysColumnArr, JSONArray rowData) {
 		if (requireSysColumn) {
 			Date createDate = entity.getCreateDate();
 			Date updateDate = entity.getUpdateDate();
@@ -1121,13 +1115,10 @@ public class TransmissionServiceImpl implements TransmissionService {
 			JSONArray fileJsonArr = new JSONArray();
 			for (FileUpload fileUploadEntity : fileUploadList) {
 				JSONObject json = JSON.parseObject(JsonMapper.toJson(fileUploadEntity));
-				fileList.add(new File(Global.getUserfilesBaseDir("fileupload") + File.separator
-						+ fileUploadEntity.getFileEntity().getFilePath() + fileUploadEntity.getFileEntity().getFileId()
-						+ "." + fileUploadEntity.getFileEntity().getFileExtension()));
+				fileList.add(new File(Global.getUserfilesBaseDir("fileupload") + File.separator + fileUploadEntity.getFileEntity().getFilePath() + fileUploadEntity.getFileEntity().getFileId() + "." + fileUploadEntity.getFileEntity().getFileExtension()));
 				SendFile sendFile = new SendFile();
 				sendFile.setPath(fileUploadEntity.getFileEntity().getFilePath());
-				sendFile.setFileName(fileUploadEntity.getFileEntity().getFileId() + "."
-						+ fileUploadEntity.getFileEntity().getFileExtension());
+				sendFile.setFileName(fileUploadEntity.getFileEntity().getFileId() + "." + fileUploadEntity.getFileEntity().getFileExtension());
 				json.put("fileInfo", JSON.parseObject(JsonMapper.toJson(sendFile)));
 				fileJsonArr.add(json);
 			}
@@ -1136,9 +1127,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	}
 
 	@SuppressWarnings("rawtypes")
-	private <T extends DataEntity<?>> void buildPushRow(T entity, JSONArray rowData, Class<? extends DataEntity> css,
-			List<Field> pkList, Field field)
-			throws IntrospectionException, IllegalAccessException, InvocationTargetException {
+	private <T extends DataEntity<?>> void buildPushRow(T entity, JSONArray rowData, Class<? extends DataEntity> css, List<Field> pkList, Field field) throws IntrospectionException, IllegalAccessException, InvocationTargetException {
 		if (field.isAnnotationPresent(PushField.class)) {
 			PushField annotation = field.getAnnotation(PushField.class);
 			// 获取接收方对应数据库列名
@@ -1272,8 +1261,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 				if (file.isDirectory()) {
 					try {
 						// jeesite的copyDirectory不给力，有bug，逼我用apache的-_-
-						org.apache.commons.io.FileUtils.copyDirectory(file,
-								new File(Global.getUserfilesBaseDir(fileName)));
+						org.apache.commons.io.FileUtils.copyDirectory(file, new File(Global.getUserfilesBaseDir(fileName)));
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -1323,8 +1311,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 				if (file.isDirectory()) {
 					try {
 						// jeesite的copyDirectory不给力，有bug，逼我用apache的-_-
-						org.apache.commons.io.FileUtils.copyDirectory(file,
-								new File(Global.getUserfilesBaseDir(fileName)));
+						org.apache.commons.io.FileUtils.copyDirectory(file, new File(Global.getUserfilesBaseDir(fileName)));
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -1359,7 +1346,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	 * 执行触发器
 	 */
 	private void excuteTrigger(String busType, String triggerName, JSONArray tables) {
-		if (!triggerName.equals(Constant.HAS_NO_TRIGGER)) {
+		if (StringUtils.isNotBlank(triggerName) && !triggerName.equals(Constant.HAS_NO_TRIGGER)) {
 			// 执行触发器
 			@SuppressWarnings("static-access")
 			ReceiveTrigger trigger = (ReceiveTrigger) springContextsUtil.getBean(triggerName);
@@ -1447,8 +1434,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 
 		@Override
 		public Void call() throws Exception {
-			Result result = this.client.send(this.tempFile.getPath() + File.separator + this.tempFile.getPiceFileName(),
-					this.tempFile.getPoint(), this.tempFile.getBusType());
+			Result result = this.client.send(this.tempFile.getPath() + File.separator + this.tempFile.getPiceFileName(), this.tempFile.getPoint(), this.tempFile.getBusType());
 			System.out.println("响应结果为：" + result.toString());
 			// 发送成功后删除临时碎片文件信息
 			if (result.isSuccess()) {
