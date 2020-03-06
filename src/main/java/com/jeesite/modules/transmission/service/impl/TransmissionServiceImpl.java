@@ -217,7 +217,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 					File[] listFiles = unZipDirFile.listFiles();
 					JSONArray tables = new JSONArray();
 					for (File file : listFiles) {
-						String descFileName = unZipDir + File.separator + file.getName().substring(0, file.getName().lastIndexOf(".") + 1);
+						String descFileName = unZipDir + File.separator + file.getName().substring(0, file.getName().lastIndexOf("."));
 						FileUtils.unZipFiles(file.getAbsolutePath(), descFileName);
 						tables.addAll(doAnalysisMulti(descFileName, busType + ".json"));
 					}
