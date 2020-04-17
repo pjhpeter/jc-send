@@ -213,13 +213,22 @@ public class TransmissionServiceImpl implements TransmissionService {
 				String unZipDir = pullFileDir + File.separator + busType;
 				FileUtils.unZipFiles(pullFileDir + File.separator + pullFileName, pullFileDir + File.separator + busType);
 				try {
+					ExecutorService threadPoll = Executors.newFixedThreadPool(10);
 					File unZipDirFile = new File(unZipDir);
 					File[] listFiles = unZipDirFile.listFiles();
 					JSONArray tables = new JSONArray();
 					for (File file : listFiles) {
-						String descFileName = unZipDir + File.separator + file.getName().substring(0, file.getName().lastIndexOf("."));
+						String fileName = file.getName();
+						String pullDataFlagId = fileName.substring(0, fileName.indexOf("_"));
+						String descFileName = unZipDir + File.separator + fileName.substring(0, fileName.lastIndexOf("."));
 						FileUtils.unZipFiles(file.getAbsolutePath(), descFileName);
 						tables.addAll(doAnalysisMulti(descFileName, busType + ".json"));
+						threadPoll.submit(new Runnable() {
+							@Override
+							public void run() {
+								cleanPullFilePice(busType, pullDataFlagId, fileName.substring(0, fileName.lastIndexOf(".")), client);
+							}
+						});
 					}
 					// 清除推送端的临时文件
 					cleanPushTempFile(busType, triggerName, client);
@@ -503,6 +512,27 @@ public class TransmissionServiceImpl implements TransmissionService {
 	}
 
 	/**
+	 * 同一业务有多项多送数据，客户端每解析成功一条数据则删除一项推送的临时文件
+	 * @param busType 业务类型
+	 * @param appUri 应用唯一标识
+	 * @param pullDataFlagId 推送数据缓存表id
+	 * @param fileName 推送临时文件名
+	 * @return
+	 */
+	public Result serverCleanPullFilePice(String appUri, String busType, String pullDataFlagId, String fileName) {
+		// 删除待拉取的临时文件
+		String tempFileDir = Global.getUserfilesBaseDir(Constant.TemplDir.WEIT_FOR_PULL_TEMP);
+		String busTypeDir = tempFileDir + File.separator + appUri + busType;
+		String pullFilePiceFileName = busTypeDir +File.separator + fileName + ".zip";
+		System.out.println("删除" + pullFilePiceFileName);
+		FileUtils.deleteFile(pullFilePiceFileName);
+		PullDataFlag pullDataFlag = new PullDataFlag();
+		pullDataFlag.setId(pullDataFlagId);
+		pullDataFlagService.delete(pullDataFlag);
+		return new Result(true, "删除成功");
+	}
+	
+	/**
 	 * 清除待拉取的临时文件
 	 * 
 	 * @param appUri      应用唯一标识
@@ -577,7 +607,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			FileUtils.createDirectory(tempPath);
 			buildZip(this.pushExtraFileList, busTypeTempPath, jsonPath, jsonFileName, zipName, this.pushFileList, this.pushTables.toJSONString());
 			// 记录待拉取的标识
-			PullDataFlag entity = new PullDataFlag(pullDataFlagId, appUri, transFlag, this.pushTables.toJSONString());
+			PullDataFlag entity = new PullDataFlag(null, appUri, transFlag, this.pushTables.toJSONString());
 			entity.setIsNewRecord(true);
 			pullDataFlagService.save(entity);
 			FileUtils.deleteQuietly(new File(jsonPath));
@@ -1232,6 +1262,10 @@ public class TransmissionServiceImpl implements TransmissionService {
 		return client.hasPullData(busType).isSuccess();
 	}
 
+	private boolean cleanPullFilePice(String busType, String pullDataFlagId, String fileName, Client client) {
+		return client.cleanPullFilePice(busType, pullDataFlagId, fileName).isSuccess();
+	}
+	
 	/*
 	 * 清除推送的临时文件
 	 */

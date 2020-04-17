@@ -10,8 +10,10 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -188,6 +190,42 @@ public class Client implements Serializable {
 			e.printStackTrace();
 			return new Result(false, Constant.Message.拉取失败, null);
 		}
+	}
+
+	/**
+	 * 同一业务有多项多送数据，客户端每解析成功一条数据则删除一项推送的临时文件
+	 * 
+	 * @param busType        业务类型
+	 * @param pullDataFlagId 推送数据缓存表id
+	 * @param fileName       推送临时文件名
+	 * @return
+	 */
+	public Result cleanPullFilePice(String busType, String pullDataFlagId, String fileName) {
+		// 拉取成功，删除远端临时文件
+//		WebClient webClient = WebClient.create("http://" + this.url);
+//		System.out.println("向http://" + this.url + "发送请求");
+//		Mono<String> bodyToMono = webClient.get()
+//				.uri("/trans/clean_pull_file_pice/{busType}/{token}/{appUri}/{pullDataFlagId}/{fileName}", busType,
+//						AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY),
+//						this.appUri, pullDataFlagId, fileName)
+//				.retrieve().bodyToMono(String.class);
+//		String block = bodyToMono.block();
+//		Result result = JSON.toJavaObject(JSONObject.parseObject(block), Result.class);
+//		return result;
+		RestTemplate restTemplate = new RestTemplate();
+		ResponseEntity<String> entity = restTemplate.getForEntity("http://" + this.url + "/trans/clean_pull_file_pice/{busType}/{token}/{appUri}?pullDataFlagId={pullDataFlagId}&fileName={fileName}", String.class, busType,
+				AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY), this.appUri, pullDataFlagId, fileName);
+		String body = entity.getBody();
+//		// 拉取成功，删除远端临时文件
+//		WebClient webClient = WebClient.create("http://" + this.url);
+//		System.out.println("向http://" + this.url + "发送请求");
+//		Mono<String> bodyToMono = webClient.get().uri("/trans/has_pull_data/{busType}/{token}/{appUri}", busType,
+//				AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY), this.appUri)
+//				.retrieve().bodyToMono(String.class);
+//		RestTemplate restTemplate = new RestTemplate();
+//		ResponseEntity<String> entity = restTemplate.getForEntity("http://" + url + "/trans/has_pull_data/{busType}/{token}/{appUri}?pullDataFlagId={pullDataFlagId}&fileName={fileName}", String.class, busType, AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY), this.appUri, pullDataFlagId, fileName);
+//		String body = entity.getBody();
+		return JSON.toJavaObject(JSON.parseObject(body), Result.class);
 	}
 
 	/**

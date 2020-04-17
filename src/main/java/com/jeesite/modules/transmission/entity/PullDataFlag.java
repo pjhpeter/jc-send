@@ -22,15 +22,19 @@ public class PullDataFlag extends DataEntity<PullDataFlag> {
 	private String busType;
 	private String rowsJsonStr;
 
+	public PullDataFlag() {
+		
+	}
+	
 	/**
 	 * 构造有可拉取数据的标识对象
-	 * 
-	 * @param id          TODO
+	 * @param id TODO
 	 * @param appUri      应用唯一标识
 	 * @param busType     业务类型
 	 * @param rowsJsonStr 待拉取的数据
 	 */
 	public PullDataFlag(String id, String appUri, String busType, String rowsJsonStr) {
+		this.id = id;
 		this.appUri = appUri;
 		this.busType = busType;
 		this.rowsJsonStr = rowsJsonStr;

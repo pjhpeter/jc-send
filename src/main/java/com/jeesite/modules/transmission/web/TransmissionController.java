@@ -3,6 +3,7 @@ package com.jeesite.modules.transmission.web;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -88,7 +89,10 @@ public class TransmissionController {
 
 	@GetMapping("has_pull_data/{busType}/{token}/{appUri}")
 	@ResponseBody
-	public Result hasPullData(@PathVariable("busType") String busType, @PathVariable("appUri") String appUri) {
+	public Result hasPullData(@PathVariable("busType") String busType, @PathVariable("appUri") String appUri, String pullDataFlagId, String fileName) {
+		if(StringUtils.isNotBlank(pullDataFlagId)) {
+			return this.transmissionServiceImpl.serverCleanPullFilePice(appUri, busType, pullDataFlagId, fileName);
+		}
 		if (this.transmissionServiceImpl.serverHasPullData(appUri, busType)) {
 			return new Result(true, "有可拉取的数据", null);
 		}
@@ -121,6 +125,20 @@ public class TransmissionController {
 	public Result cleanPullFile(@PathVariable("busType") String busType, @PathVariable("appUri") String appUri,
 			@PathVariable("triggerName") String triggerName) {
 		return this.transmissionServiceImpl.serverCleanPullFile(appUri, busType, triggerName);
+	}
+	
+	/**
+	 * 同一业务有多项多送数据，客户端每解析成功一条数据则删除一项推送的临时文件
+	 * @param busType 业务类型
+	 * @param appUri 应用唯一标识
+	 * @param pullDataFlagId 推送数据缓存表id
+	 * @param fileName 推送临时文件名
+	 * @return
+	 */
+	@GetMapping("clean_pull_file_pice/{busType}/{token}/{appUri}")
+	@ResponseBody
+	public Result cleanPullFilePice(@PathVariable("busType") String busType, @PathVariable("appUri") String appUri, String pullDataFlagId, String fileName) {
+		return this.transmissionServiceImpl.serverCleanPullFilePice(appUri, busType, pullDataFlagId, fileName);
 	}
 
 }
