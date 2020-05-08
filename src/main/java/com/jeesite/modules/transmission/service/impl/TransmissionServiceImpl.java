@@ -20,6 +20,8 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -63,7 +65,8 @@ import com.jeesite.modules.transmission.util.SpringContextsUtil;
  * @author 彭嘉辉
  *
  */
-@Service(value = "transmissionService")
+@Service("transmissionService")
+@Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class TransmissionServiceImpl implements TransmissionService {
 	@Autowired
 	private FileUploadService fileUploadService;
@@ -513,17 +516,18 @@ public class TransmissionServiceImpl implements TransmissionService {
 
 	/**
 	 * 同一业务有多项多送数据，客户端每解析成功一条数据则删除一项推送的临时文件
-	 * @param busType 业务类型
-	 * @param appUri 应用唯一标识
+	 * 
+	 * @param busType        业务类型
+	 * @param appUri         应用唯一标识
 	 * @param pullDataFlagId 推送数据缓存表id
-	 * @param fileName 推送临时文件名
+	 * @param fileName       推送临时文件名
 	 * @return
 	 */
 	public Result serverCleanPullFilePice(String appUri, String busType, String pullDataFlagId, String fileName) {
 		// 删除待拉取的临时文件
 		String tempFileDir = Global.getUserfilesBaseDir(Constant.TemplDir.WEIT_FOR_PULL_TEMP);
 		String busTypeDir = tempFileDir + File.separator + appUri + busType;
-		String pullFilePiceFileName = busTypeDir +File.separator + fileName + ".zip";
+		String pullFilePiceFileName = busTypeDir + File.separator + fileName + ".zip";
 		System.out.println("删除" + pullFilePiceFileName);
 		FileUtils.deleteFile(pullFilePiceFileName);
 		PullDataFlag pullDataFlag = new PullDataFlag();
@@ -531,7 +535,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		pullDataFlagService.delete(pullDataFlag);
 		return new Result(true, "删除成功");
 	}
-	
+
 	/**
 	 * 清除待拉取的临时文件
 	 * 
@@ -1265,7 +1269,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	private boolean cleanPullFilePice(String busType, String pullDataFlagId, String fileName, Client client) {
 		return client.cleanPullFilePice(busType, pullDataFlagId, fileName).isSuccess();
 	}
-	
+
 	/*
 	 * 清除推送的临时文件
 	 */
@@ -1413,40 +1417,42 @@ public class TransmissionServiceImpl implements TransmissionService {
 
 		// 生成json数据
 		JSONObject table = null;
-		// 判断是否推送
-		if (isPush) {// 推送
-			// 初始化
-			if (this.pushFileList == null) {
-				this.pushFileList = ListUtils.newArrayList();
-			}
-			if (this.pushTables == null) {
-				this.pushTables = new JSONArray();
-			}
-			if (this.pushExtraFileList == null) {
-				this.pushExtraFileList = ListUtils.newArrayList();
-			}
-			table = jsonTableBuilder4Push(transEntity, this.pushFileList, list);
-			// 加入批处理列表中
-			this.pushTables.add(table);
-			if (extraFileList != null) {
-				this.pushExtraFileList.addAll(extraFileList);
-			}
-		} else {// 发送
-			// 初始化
-			if (this.sendFileList == null) {
-				this.sendFileList = ListUtils.newArrayList();
-			}
-			if (this.sendTables == null) {
-				this.sendTables = new JSONArray();
-			}
-			if (this.sendExtraFileList == null) {
-				this.sendExtraFileList = ListUtils.newArrayList();
-			}
-			table = jsonTableBuilder(transEntity, this.sendFileList, list);
-			// 加入批处理列表中
-			this.sendTables.add(table);
-			if (extraFileList != null) {
-				this.sendExtraFileList.addAll(extraFileList);
+		synchronized (this) {
+			// 判断是否推送
+			if (isPush) {// 推送
+				// 初始化
+				if (this.pushFileList == null) {
+					this.pushFileList = ListUtils.newArrayList();
+				}
+				if (this.pushTables == null) {
+					this.pushTables = new JSONArray();
+				}
+				if (this.pushExtraFileList == null) {
+					this.pushExtraFileList = ListUtils.newArrayList();
+				}
+				table = jsonTableBuilder4Push(transEntity, this.pushFileList, list);
+				// 加入批处理列表中
+				this.pushTables.add(table);
+				if (extraFileList != null) {
+					this.pushExtraFileList.addAll(extraFileList);
+				}
+			} else {// 发送
+				// 初始化
+				if (this.sendFileList == null) {
+					this.sendFileList = ListUtils.newArrayList();
+				}
+				if (this.sendTables == null) {
+					this.sendTables = new JSONArray();
+				}
+				if (this.sendExtraFileList == null) {
+					this.sendExtraFileList = ListUtils.newArrayList();
+				}
+				table = jsonTableBuilder(transEntity, this.sendFileList, list);
+				// 加入批处理列表中
+				this.sendTables.add(table);
+				if (extraFileList != null) {
+					this.sendExtraFileList.addAll(extraFileList);
+				}
 			}
 		}
 
