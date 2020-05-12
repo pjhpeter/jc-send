@@ -39,6 +39,8 @@ import com.jeesite.modules.transmission.util.Constant;
  * 
  * @triggerName 触发器注入名称，一般为类名首字母小写后的字符串，用于数据传输完成后，在接收端需要执行的一些业务逻辑，触发器类需要在接收端写好，实现ReceiveTrigger接口
  * 
+ * @preTriggerName 预处理触发器注入名称，一般为类名首字母小写后的字符串，用于处理接收到的数据前，在接收端需要执行的一些业务逻辑，触发器类需要在接收端写好，实现PreReceiveTrigger接口
+ * 
  * @author 彭嘉辉
  *
  */
@@ -61,6 +63,7 @@ public class TransEntity<T extends DataEntity<?>> implements Serializable {
 	private ExtraFile extraFile;
 	private String extraStr;
 	private String triggerName = Constant.HAS_NO_TRIGGER;
+	private String preTriggerName = Constant.HAS_NO_TRIGGER;
 
 	public List<T> getList() {
 		return list;
@@ -180,6 +183,14 @@ public class TransEntity<T extends DataEntity<?>> implements Serializable {
 
 	public void setTriggerName(String triggerName) {
 		this.triggerName = triggerName;
+	}
+
+	public String getPreTriggerName() {
+		return preTriggerName;
+	}
+
+	public void setPreTriggerName(String preTriggerName) {
+		this.preTriggerName = preTriggerName;
 	}
 
 }

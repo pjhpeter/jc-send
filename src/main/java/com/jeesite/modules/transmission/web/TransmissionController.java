@@ -49,9 +49,9 @@ public class TransmissionController {
 	 * @param triggerName 解析数据成功后需要执行的触发器名称
 	 * @return 响应结果
 	 */
-	@PostMapping("analysis/{busType}/{token}/{appUri}/{triggerName}")
-	public Result analysis(@PathVariable("busType") String busType, @PathVariable("appUri") String appUri, @PathVariable("triggerName") String triggerName) {
-		return this.transmissionService.serverAnalysis(appUri, busType, triggerName);
+	@PostMapping("analysis/{busType}/{token}/{appUri}/{triggerName}/{preTriggerName}")
+	public Result analysis(@PathVariable("busType") String busType, @PathVariable("appUri") String appUri, @PathVariable("triggerName") String triggerName, @PathVariable("preTriggerName") String preTriggerName) {
+		return this.transmissionService.serverAnalysis(appUri, busType, triggerName, preTriggerName);
 	}
 
 	/**
@@ -62,9 +62,9 @@ public class TransmissionController {
 	 * @param triggerName 触发器注入名称，一般为类名首字母小写后的字符串，用于数据传输完成后，在接收端需要执行的一些业务逻辑，触发器类需要在接收端写好，实现ReceiveTrigger接口
 	 * @return 响应结果
 	 */
-	@PostMapping("analysis_multi/{transFlag}/{token}/{appUri}/{triggerName}")
-	public Result analysisMulti(@PathVariable("transFlag") String transFlag, @PathVariable("appUri") String appUri, @PathVariable("triggerName") String triggerName) {
-		return this.transmissionService.serverAnalysisMulti(appUri, transFlag, triggerName);
+	@PostMapping("analysis_multi/{transFlag}/{token}/{appUri}/{triggerName}/{preTriggerName}")
+	public Result analysisMulti(@PathVariable("transFlag") String transFlag, @PathVariable("appUri") String appUri, @PathVariable("triggerName") String triggerName, @PathVariable("preTriggerName") String preTriggerName) {
+		return this.transmissionService.serverAnalysisMulti(appUri, transFlag, triggerName, preTriggerName);
 	}
 
 	/**

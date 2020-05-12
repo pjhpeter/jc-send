@@ -53,6 +53,7 @@ import com.jeesite.modules.transmission.entity.TransEntity;
 import com.jeesite.modules.transmission.service.PullDataFlagService;
 import com.jeesite.modules.transmission.service.TempFileService;
 import com.jeesite.modules.transmission.service.TransmissionService;
+import com.jeesite.modules.transmission.trigger.PreReceiveTrigger;
 import com.jeesite.modules.transmission.trigger.ReceiveTrigger;
 import com.jeesite.modules.transmission.util.Constant;
 import com.jeesite.modules.transmission.util.DataBaseHandler;
@@ -129,7 +130,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		}
 		if (transEntity.isRenewal()) {
 			// 断点续传
-			return renewal(client, transEntity.getBusType(), transEntity.getTriggerName(), false);
+			return renewal(client, transEntity.getBusType(), transEntity.getTriggerName(), transEntity.getPreTriggerName(), false);
 		}
 		// 新的传输
 		return sendData(transEntity, client);
@@ -146,7 +147,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	}
 
 	@Override
-	public Result clientSendBatch(String transFlag, boolean renewal, String url, String triggerName) {
+	public Result clientSendBatch(String transFlag, boolean renewal, String url, String triggerName, String preTriggerName) {
 		// 传输数据
 		Client client = null;
 		if (StringUtils.isNotBlank(url)) {
@@ -157,7 +158,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 
 		// 断点续传
 		if (renewal) {
-			return renewal(client, transFlag, triggerName, true);
+			return renewal(client, transFlag, triggerName, preTriggerName, true);
 		}
 
 		// 临时目录
@@ -181,7 +182,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		cleanSendBatch();
 
 		// 传输成功后调用接收方数据解析接口
-		return analysisMultiData(transFlag, client, triggerName);
+		return analysisMultiData(transFlag, client, triggerName, preTriggerName);
 	}
 
 	@Override
@@ -204,9 +205,6 @@ public class TransmissionServiceImpl implements TransmissionService {
 	public Result clientPull(String busType, String triggerName) {
 		Client client = new Client();
 		if (checkPullData(busType, client)) {
-			if (StringUtils.isBlank(triggerName)) {
-				triggerName = Constant.HAS_NO_TRIGGER;
-			}
 			// 拉取数据
 			Result pullResult = client.pull(busType);
 			if (pullResult.isSuccess()) {
@@ -225,7 +223,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 						String pullDataFlagId = fileName.substring(0, fileName.indexOf("_"));
 						String descFileName = unZipDir + File.separator + fileName.substring(0, fileName.lastIndexOf("."));
 						FileUtils.unZipFiles(file.getAbsolutePath(), descFileName);
-						tables.addAll(doAnalysisMulti(descFileName, busType + ".json"));
+						tables.addAll(doAnalysisMulti(descFileName, busType + ".json", null, null));
 						threadPoll.submit(new Runnable() {
 							@Override
 							public void run() {
@@ -294,7 +292,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	}
 
 	@Override
-	public Result importData(MultipartFile file, String busType, String triggerName) {
+	public Result importData(MultipartFile file, String busType, String triggerName, String preTriggerName) {
 		String tempDir = Global.getUserfilesBaseDir(Constant.TemplDir.IMPORT_TEMP);
 		String fileName = file.getOriginalFilename();
 		String zipName = tempDir + File.separator + fileName;
@@ -308,9 +306,9 @@ public class TransmissionServiceImpl implements TransmissionService {
 			// 解析数据
 			JSONArray tables = null;
 			try {
-				tables = doAnalysis(unZipDir, jsonFileName);
+				tables = doAnalysis(unZipDir, jsonFileName, busType, preTriggerName);
 			} catch (Exception e) {
-				tables = doAnalysisMulti(unZipDir, jsonFileName);
+				tables = doAnalysisMulti(unZipDir, jsonFileName, busType, preTriggerName);
 			}
 			excuteTrigger(busType, triggerName, tables);
 			return new Result(true, Constant.Message.导入成功, tables.toJSONString());
@@ -324,7 +322,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	}
 
 	@Override
-	public Result importDataBatch(MultipartFile file, String transFlag, String triggerName) {
+	public Result importDataBatch(MultipartFile file, String transFlag, String triggerName, String preTriggerName) {
 		String tempDir = Global.getUserfilesBaseDir(Constant.TemplDir.IMPORT_TEMP);
 		String fileName = file.getOriginalFilename();
 		String zipName = tempDir + File.separator + fileName;
@@ -336,7 +334,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			// 解压
 			FileUtils.unZipFiles(zipName, unZipDir);
 			// 解析数据
-			JSONArray tables = doAnalysisMulti(unZipDir, jsonFileName);
+			JSONArray tables = doAnalysisMulti(unZipDir, jsonFileName, transFlag, preTriggerName);
 			excuteTrigger(transFlag, triggerName, tables);
 			return new Result(true, Constant.Message.导入成功, tables.toJSONString());
 		} catch (Exception e) {
@@ -379,12 +377,13 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/**
 	 * 解析传输过来的数据
 	 * 
-	 * @param appUri      应用唯一标识
-	 * @param busType     业务类型
-	 * @param triggerName 数据解析成功后执行的触发器
+	 * @param appUri         应用唯一标识
+	 * @param busType        业务类型
+	 * @param triggerName    数据解析成功后执行的触发器
+	 * @param preTriggerName 预处理触发器
 	 * @return 响应結果
 	 */
-	public Result serverAnalysis(String appUri, String busType, String triggerName) {
+	public Result serverAnalysis(String appUri, String busType, String triggerName, String preTriggerName) {
 		// 临时目录
 		String tempDir = Global.getUserfilesBaseDir(Constant.TemplDir.RECEIVE_TEMP + appUri + busType);
 		// 数据文件
@@ -395,7 +394,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		// 解压
 		FileUtils.unZipFiles(targetFileName, unZipDir);
 		try {
-			JSONArray tables = doAnalysis(unZipDir, jsonFileName);
+			JSONArray tables = doAnalysis(unZipDir, jsonFileName, busType, preTriggerName);
 			excuteTrigger(busType, triggerName, tables);
 			return new Result(true, Constant.Message.解析成功);
 		} catch (Exception e) {
@@ -410,12 +409,13 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/**
 	 * 解析批量传输的数据
 	 * 
-	 * @param appUri      应用唯一标识
-	 * @param transFlag   传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
-	 * @param triggerName 触发器注入名称，一般为类名首字母小写后的字符串，用于数据传输完成后，在接收端需要执行的一些业务逻辑，触发器类需要在接收端写好，实现ReceiveTrigger接口
+	 * @param appUri         应用唯一标识
+	 * @param transFlag      传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
+	 * @param triggerName    触发器注入名称，一般为类名首字母小写后的字符串，用于数据传输完成后，在接收端需要执行的一些业务逻辑，触发器类需要在接收端写好，实现ReceiveTrigger接口
+	 * @param preTriggerName 预处理触发器名称，一般为类名首字母小写后的字符串，用于数据传输完成后，在接收端需要执行的一些业务逻辑，触发器类需要在接收端写好，实现PreReceiveTrigger接口
 	 * @return 响应结果
 	 */
-	public Result serverAnalysisMulti(String appUri, String transFlag, String triggerName) {
+	public Result serverAnalysisMulti(String appUri, String transFlag, String triggerName, String preTriggerName) {
 		// 临时目录
 		String tempDir = Global.getUserfilesBaseDir(Constant.TemplDir.RECEIVE_TEMP + appUri + transFlag);
 		// 数据文件
@@ -427,7 +427,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 		FileUtils.unZipFiles(targetFileName, unZipDir);
 		try {
 			// 解析数据
-			JSONArray tables = doAnalysisMulti(unZipDir, jsonFileName);
+			JSONArray tables = doAnalysisMulti(unZipDir, jsonFileName, transFlag, preTriggerName);
 			excuteTrigger(transFlag, triggerName, tables);
 			return new Result(true, Constant.Message.解析成功);
 		} catch (Exception e) {
@@ -654,7 +654,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 			// 发送文件
 			transData(client, tempPath, tempFileList);
 			// 调用对方的解析文件接口
-			result = analysisData(busType, client, transEntity.getTriggerName());
+			result = analysisData(busType, client, transEntity.getTriggerName(), transEntity.getPreTriggerName());
 		} catch (Exception e) {
 			e.printStackTrace();
 			result = new Result(false, e.getMessage());
@@ -713,7 +713,7 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 断点续传
 	 */
-	private <T extends DataEntity<?>> Result renewal(Client client, String busType, String triggerName, boolean isMulti) {
+	private <T extends DataEntity<?>> Result renewal(Client client, String busType, String triggerName, String preTriggerName, boolean isMulti) {
 		// 获取临时文件信息
 		TempFile entity = new TempFile();
 		entity.setBusType(busType);
@@ -725,11 +725,11 @@ public class TransmissionServiceImpl implements TransmissionService {
 			transData(client, tempPath, tempFileList);
 			// 调用对方的解析文件接口
 			if (isMulti) {// 是否批量传输
-				if (analysisMultiData(busType, client, triggerName).isSuccess()) {
+				if (analysisMultiData(busType, client, triggerName, preTriggerName).isSuccess()) {
 					return new Result(true, Constant.Message.传输成功);
 				}
 			} else {
-				if (analysisData(busType, client, triggerName).isSuccess()) {
+				if (analysisData(busType, client, triggerName, preTriggerName).isSuccess()) {
 					return new Result(true, Constant.Message.传输成功);
 				}
 			}
@@ -1248,15 +1248,15 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 调用远端解析数据接口
 	 */
-	private Result analysisData(String busType, Client client, String triggerName) {
-		return client.analysis(busType, triggerName);
+	private Result analysisData(String busType, Client client, String triggerName, String preTriggerName) {
+		return client.analysis(busType, triggerName, preTriggerName);
 	}
 
 	/*
 	 * 调用远端针对批量传输的解析数据接口
 	 */
-	private Result analysisMultiData(String transFlag, Client client, String triggerName) {
-		return client.analysisMulti(transFlag, triggerName);
+	private Result analysisMultiData(String transFlag, Client client, String triggerName, String preTriggerName) {
+		return client.analysisMulti(transFlag, triggerName, preTriggerName);
 	}
 
 	/*
@@ -1280,12 +1280,17 @@ public class TransmissionServiceImpl implements TransmissionService {
 	/*
 	 * 解析数据
 	 */
-	private JSONArray doAnalysis(String unZipDir, String jsonFileName) throws Exception {
+	private JSONArray doAnalysis(String unZipDir, String jsonFileName, String busType, String preTriggerName) throws Exception {
 		// 读取json数据
 		String aesStr = FileUtils.readFileToString(new File(unZipDir + File.separator + jsonFileName), "UTF-8");
 		String jsonStr = AesUtils.decode(aesStr, Constant.FILE_KEY);
 		System.out.println(jsonStr);
 		JSONObject table = JSON.parseObject(jsonStr);
+		// 返回表json，为了与批量处理统一，所以用JSONArray
+		JSONArray tables = new JSONArray();
+		tables.add(table);
+		// 执行预处理触发器
+		excutePreTrigger(busType, preTriggerName, tables);
 		// 数据库表名
 		String tableName = table.getString("table");
 		if (StringUtils.isNotBlank(tableName)) {
@@ -1315,16 +1320,13 @@ public class TransmissionServiceImpl implements TransmissionService {
 		// 提交数据
 		this.dataBaseHandler.commit();
 
-		// 返回表json，为了与批量处理统一，所以用JSONArray
-		JSONArray tables = new JSONArray();
-		tables.add(table);
 		return tables;
 	}
 
 	/*
 	 * 解析批量传输的数据
 	 */
-	private JSONArray doAnalysisMulti(String unZipDir, String jsonFileName) throws Exception {
+	private JSONArray doAnalysisMulti(String unZipDir, String jsonFileName, String busType, String preTriggerName) throws Exception {
 		// 读取json数据
 		String aesStr = FileUtils.readFileToString(new File(unZipDir + File.separator + jsonFileName), "UTF-8");
 		String jsonStr = AesUtils.decode(aesStr, Constant.FILE_KEY);
@@ -1332,6 +1334,8 @@ public class TransmissionServiceImpl implements TransmissionService {
 
 		// 解析json数据
 		JSONArray tables = JSON.parseArray(jsonStr);
+		// 执行预处理触发器
+		excutePreTrigger(busType, preTriggerName, tables);
 		for (Object object : tables) {
 			JSONObject jsonObj = JSON.parseObject(object.toString());
 			// 数据库表名
@@ -1392,6 +1396,18 @@ public class TransmissionServiceImpl implements TransmissionService {
 			// 执行触发器
 			@SuppressWarnings("static-access")
 			ReceiveTrigger trigger = (ReceiveTrigger) springContextsUtil.getBean(triggerName);
+			trigger.run(tables, busType);
+		}
+	}
+
+	/*
+	 * 执行预处理触发器
+	 */
+	private void excutePreTrigger(String busType, String triggerName, JSONArray tables) {
+		if (StringUtils.isNotBlank(triggerName) && !triggerName.equals(Constant.HAS_NO_TRIGGER)) {
+			// 执行触发器
+			@SuppressWarnings("static-access")
+			PreReceiveTrigger trigger = (PreReceiveTrigger) springContextsUtil.getBean(triggerName);
 			trigger.run(tables, busType);
 		}
 	}

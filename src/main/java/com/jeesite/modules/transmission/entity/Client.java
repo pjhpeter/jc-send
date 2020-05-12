@@ -105,11 +105,12 @@ public class Client implements Serializable {
 	/**
 	 * 解析数据
 	 * 
-	 * @param busType     业务类型
-	 * @param triggerName 接收端解析数据成功后需要执行的触发器名称
+	 * @param busType        业务类型
+	 * @param triggerName    接收端解析数据成功后需要执行的触发器名称
+	 * @param preTriggerName 接收端处理传输数据前执行的预处理触发器
 	 * @return 响应结果
 	 */
-	public Result analysis(String busType, String triggerName) {
+	public Result analysis(String busType, String triggerName, String preTriggerName) {
 		try {
 			this.checkLink();
 		} catch (Exception e) {
@@ -117,18 +118,19 @@ public class Client implements Serializable {
 		}
 		WebClient webClient = WebClient.create("http://" + this.url);
 		System.out.println("向http://" + this.url + "发送请求");
-		Mono<String> bodyToMono = webClient.post().uri("/trans/analysis/{busType}/{token}/{appUri}/{triggerName}", busType, AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY), this.appUri, triggerName).retrieve().bodyToMono(String.class);
+		Mono<String> bodyToMono = webClient.post().uri("/trans/analysis/{busType}/{token}/{appUri}/{triggerName}/{preTriggerName}", busType, AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY), this.appUri, triggerName, preTriggerName).retrieve().bodyToMono(String.class);
 		return JSON.toJavaObject(JSON.parseObject(bodyToMono.block()), Result.class);
 	}
 
 	/**
 	 * 针对批量传输的数据解析
 	 * 
-	 * @param transFlag   这一组传输的标识字符串
-	 * @param triggerName 接收端解析数据成功后需要执行的触发器名称
+	 * @param transFlag      这一组传输的标识字符串
+	 * @param triggerName    接收端解析数据成功后需要执行的触发器名称
+	 * @param preTriggerName 接收端处理传输数据前执行的预处理触发器
 	 * @return 响应结果
 	 */
-	public Result analysisMulti(String transFlag, String triggerName) {
+	public Result analysisMulti(String transFlag, String triggerName, String preTriggerName) {
 		try {
 			this.checkLink();
 		} catch (Exception e) {
@@ -137,9 +139,12 @@ public class Client implements Serializable {
 		if (StringUtils.isBlank(triggerName)) {
 			triggerName = Constant.HAS_NO_TRIGGER;
 		}
+		if (StringUtils.isBlank(preTriggerName)) {
+			preTriggerName = Constant.HAS_NO_TRIGGER;
+		}
 		WebClient webClient = WebClient.create("http://" + this.url);
 		System.out.println("向http://" + this.url + "发送请求");
-		Mono<String> bodyToMono = webClient.post().uri("/trans/analysis_multi/{transFlag}/{token}/{appUri}/{triggerName}", transFlag, AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY), this.appUri, triggerName).retrieve().bodyToMono(String.class);
+		Mono<String> bodyToMono = webClient.post().uri("/trans/analysis_multi/{transFlag}/{token}/{appUri}/{triggerName}/{preTriggerName}", transFlag, AesUtils.encode(Constant.TOKEN + "_" + System.currentTimeMillis(), Constant.TOKEN_KEY), this.appUri, triggerName, preTriggerName).retrieve().bodyToMono(String.class);
 		return JSON.toJavaObject(JSON.parseObject(bodyToMono.block()), Result.class);
 	}
 
@@ -249,6 +254,9 @@ public class Client implements Serializable {
 			this.checkLink();
 		} catch (Exception e) {
 			return new Result(false, "连接失败，可能是网络不通所致");
+		}
+		if (StringUtils.isBlank(triggerName)) {
+			triggerName = Constant.HAS_NO_TRIGGER;
 		}
 		// 拉取成功，删除远端临时文件
 		WebClient webClient = WebClient.create("http://" + this.url);

@@ -44,13 +44,14 @@ public interface TransmissionService {
 	/**
 	 * 执行批量传输
 	 * 
-	 * @param transFlag   传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
-	 * @param renewal     是否断点续传
-	 * @param url         接收方的地址，如192.168.6.1:8080/sbos，如果为空默认读取参数配的send.url的值
-	 * @param triggerName 触发器注入名称，一般为类名首字母小写后的字符串，用于数据传输完成后，在接收端需要执行的一些业务逻辑，触发器类需要在接收端写好，实现ReceiveTrigger接口
+	 * @param transFlag      传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
+	 * @param renewal        是否断点续传
+	 * @param url            接收方的地址，如192.168.6.1:8080/sbos，如果为空默认读取参数配的send.url的值
+	 * @param triggerName    触发器注入名称，一般为类名首字母小写后的字符串，用于数据传输完成后，在接收端需要执行的一些业务逻辑，触发器类需要在接收端写好，实现ReceiveTrigger接口
+	 * @param preTriggerName 预处理触发器注入名称，一般为类名首字母小写后的字符串，用于处理接收到的数据前，在接收端需要执行的一些业务逻辑，触发器类需要在接收端写好，实现PreReceiveTrigger接口
 	 * @return 结果
 	 */
-	Result clientSendBatch(String transFlag, boolean renewal, String url, String triggerName);
+	Result clientSendBatch(String transFlag, boolean renewal, String url, String triggerName, String preTriggerName);
 
 	/**
 	 * 检测当前业务类型是否存在可断点续传的数据
@@ -100,22 +101,24 @@ public interface TransmissionService {
 	/**
 	 * 导入离线传输数据
 	 * 
-	 * @param file        上传的文件
-	 * @param busType     业务类型，要与导出端保持一直
-	 * @param triggerName 触发器名称
+	 * @param file           上传的文件
+	 * @param busType        业务类型，要与导出端保持一直
+	 * @param triggerName    触发器名称
+	 * @param preTriggerName 预处理触发器名称
 	 * @return 结果
 	 */
-	Result importData(MultipartFile file, String busType, String triggerName);
+	Result importData(MultipartFile file, String busType, String triggerName, String preTriggerName);
 
 	/**
 	 * 导入批量传输数据
 	 * 
-	 * @param file        上传的文件
-	 * @param transFlag   传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
-	 * @param triggerName 触发器名称
+	 * @param file           上传的文件
+	 * @param transFlag      传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
+	 * @param triggerName    触发器名称
+	 * @param preTriggerName 预处理触发器
 	 * @return 结果
 	 */
-	Result importDataBatch(MultipartFile file, String transFlag, String triggerName);
+	Result importDataBatch(MultipartFile file, String transFlag, String triggerName, String preTriggerName);
 
 	/**
 	 * 推送数据
