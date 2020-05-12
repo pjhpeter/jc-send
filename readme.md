@@ -2,16 +2,16 @@
 这个接口是基于jeesite的，不懂jeesite的就不要往下看了，先劝退一波  
 设计场景是这样的，一个中心端，多个单位端，还可以有一些特殊端，比如像军工项目有个叫服务窗口端的，单位端和特殊端可以向中心端发送数据。如果中心端的数据要到单位端或特殊端，是由单位端或特殊端来从中心端拉取数据，总之中心端永远不会主动向单位端和特殊端推送数据的，因为他最牛的┗|｀O′|┛ 嗷~~  
 # 1.导包  
-```  
+```xml  
 <!-- 报送模块 -->
 <dependency>
     <groupId>com.jeesite</groupId>
     <artifactId>jc-send</artifactId>
     <version>${project.parent.version}</version>
 </dependency>
-```  
-# 2.建表  
 ```
+# 2.建表  
+```sql
 -- 记录数据传输的碎片文件信息，用于断点续传
 CREATE TABLE trans_temp_file (
 	id VARCHAR(64) PRIMARY KEY,
@@ -29,7 +29,7 @@ CREATE TABLE trans_pull_data_flag(
 	bus_type VARCHAR(100),-- 业务类型
 	rows_json_str longtext-- 待拉取的数据
 );
-```  
+```
 也可以在jc-send.jar里面找到tables.sql执行  
 
 # 3.参数设置
@@ -42,7 +42,7 @@ CREATE TABLE trans_pull_data_flag(
 # 4.写代码
 ## 报送的话
 ### a.在entity那里加注解  
-```
+```java
 @SendTable(to="sbos_unit_secpost_check_haha")//当这边的表名和那边的表名不同的时候添加这个注解，如果一样就不用了
 @Table(name="sbos_unit_secpost_check", alias="a", columns={
 		@Column(name="id", attrName="id", label="id", isPK=true),
@@ -79,9 +79,9 @@ public class UnitSecpostCheck extends DataEntity<UnitSecpostCheck> {
 	private Unit unit;   
 	private String secPostCount;
 }
-```  
-### b.写报送的代码
 ```
+### b.写报送的代码
+```java
 List<SbosMemberSecbook> list = secbookService.findList(new SbosMemberSecbook());
 // 基本参数
 TransEntity<SbosMemberSecbook> transEntity = new TransEntity<>();
@@ -101,7 +101,11 @@ transEntity.setExtraStr("{\"msg\" : \"哈哈\"}");
 
 // 如果报送完数据之后，需要在接收端执行一些业务代码的话可以这样，当然前提是接收端那边有一个叫TestTrigger（这个名字随便起的，不要到时满大街的TestTrigger哟(°ー°〃)）的触发器哦，不然就搞笑咧^_^
 transEntity.setTriggerName("testTrigger");//这里给的是触发器的spring容器里的id，注解注入的话一般默认类名首字母小写
-		
+
+// 接收端处理接到的数据之前也可以做一些业务操作，原理跟上面的触发器一样，给一个预处理触发器的名字就可以啦
+transEntity.setPreTriggerName("testPreTrigger");//这里给的是触发器的spring容器里的id，注解注入的话一般默认类名首字母小写
+
+
 if(transmissionService.clientHasRenewal(busType)) {// 判断是否可以断点续传
 	transEntity.setRenewal(true);
 }
@@ -109,10 +113,10 @@ if(transmissionService.clientHasRenewal(busType)) {// 判断是否可以断点�
 // 调用报送接口
 Result result = transmissionService.clientSend(transEntity);
 System.out.println(result);
-```  
+```
 触发器TestTrigger的写法  
 ![image](/uploads/eb0f0d9e60d60b2350484cda75848804/image.png)
-```
+```java
 @Component
 public class TestTrigger implements ReceiveTrigger {
 
@@ -128,12 +132,12 @@ public class TestTrigger implements ReceiveTrigger {
 	}
 
 }
-```  
+```
 报送就这样写完  
 -----------------------------------------------------------我是华丽的分割线------------------------------------------------------------------------  
 ## 推送的话  
 ### a.推送端的entity添加注解  
-```
+```java
 @PushTable(to = "sbos_unit_secpost_determine_book_haha") // 当这边的表名和那边的表名不同的时候添加这个注解，如果一样就不用了
 @Table(name = "sbos_unit_secpost_determine_book", alias = "a", columns = { @Column(name = "id", attrName = "id", label = "id", isPK = true),
 		@Column(name = "unit_secpost_check_id", attrName = "unitSecpostCheckId", label = "岗位审核表id"), @Column(name = "unit_secpost_item_id", attrName = "unitSecpostItemId", label = "涉密岗位备案id"),
@@ -161,9 +165,9 @@ public class UnitSecpostDetermineBook extends DataEntity<UnitSecpostDetermineBoo
 	private String templateContent;
 	private Unit unit;
 }
-```  
-### b.推送端写推送代码  
 ```
+### b.推送端写推送代码  
+```java
 UnitSecpostDetermineBook unitSecpostDetermineBook = new UnitSecpostDetermineBook("1164508036276912128");
 UnitSecpostDetermineBook unitSecpostDetermineBook2 = unitSecpostDetermineBookService.get(unitSecpostDetermineBook);
 
@@ -182,20 +186,20 @@ transEntity.setExtraFileList(extralFileList);
 //推送数据，这时数据还没有真正到达接收方，只是临时存放在待拉取的区域
 Result result = transmissionService.serverPush("test_unit", transEntity);
 System.out.println(result);
-```  
-### c.接收端写拉取代码  
 ```
+### c.接收端写拉取代码  
+```java
 //一句话，第一个参数是busType，要跟推送端的保持一致，第二个参数就是拉取成功后要在推送端执行触发器，原理跟报送一样哦
 //这一句话最好写在controller那里，不然可能会造成事物冲突！！！这一句话最好写在controller那里，不然可能会造成事物冲突！！！这一句话最好写在controller那里，不然可能会造成事物冲突！！！
 Result result = transmissionService.clientPull("UnitSecpostDetermineBook", "testTrigger");
 System.out.println(result.toString());//我不是一句话
-```  
+```
 拉取就这么写完了耶^_^  
 ----------------------------------------------------------朕是威严的分割线------------------------------------------------------------  
 # 还有离线的喔
 由于我懒得测试，所以不一定稳定，所以说明也写的很偷懒 ≡ω≡  
 ## 导出
-```
+```java
 //这是导出后的压缩包文件名，不传默认会用busType做文件名
 String exportFileName = "某某某单位报送的数据";
 //这里会下载文件哦
@@ -209,7 +213,7 @@ transmissionService.importData(file, "SbosMemberSecbook");
 --------------------------------------------------------我是谁？我在哪？在干嘛？-------------------------------------------------------
 # 还可以批量传输呢
 ## 在线的
-```
+```java
 // 添加要批处理对象
 transmissionService.addSendBatch(transEntity1);
 transmissionService.addSendBatch(transEntity2);
@@ -220,7 +224,7 @@ boolean renewal = false;
 if (transmissionService.clientHasRenewal(transFlag)) {// 看看有没有断点续传
 	renewal = true;
 }
-Result result = transmissionService.clientSendBatch(transFlag, renewal, null, "testTrigger");
+Result result = transmissionService.clientSendBatch(transFlag, renewal, null, "testTrigger", "testPreTrigger");// 批量传输的触发器只有在这里写才有用哦哦哦
 System.out.println(result);
 ```
 ## 离线的
@@ -234,14 +238,14 @@ transmissionService.addSendBatch(transEntity2);
 //exportFileName是导出后的压缩包文件名，不传默认会用busType做文件名
 //这里会下载文件哦
 transmissionService.exportBatch(transFlag, exportFileName, request, response);
-```  
-导入  
 ```
+导入  
+```java
 //transFlag是传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
 transmissionService.importDataBatch(file, transFlag);
 ```
 ##  推送的
-```
+```java
 // 添加要批处理对象
 transmissionService.addPushBatch(transEntity1);
 transmissionService.addPushBatch(transEntity2);
@@ -253,47 +257,49 @@ System.out.println(result);
 # API说明  
 最好看一下吧，不然很多东西不知道哦 (￣_,￣ )  
 ## TransEntity
-```
+```java
 /**
  * 传输接口参数实体 参数说明：
  * 
- * list 需要传输的对象集合，传输多个对象时使用（不能与entity并用）
+ * @list 需要传输的对象集合，传输多个对象时使用（不能与entity并用）
  * 
- * entity 需要传输的单个对象，传输单个对象时使用（不能与list并用）
+ * @entity 需要传输的单个对象，传输单个对象时使用（不能与list并用）
  * 
- * entityType 需要传输的对象的实体类型
+ * @entityType 需要传输的对象的实体类型
  * 
- * url 传输接收方的地址，如：192.168.1.1:8080/temp
+ * @url 传输接收方的地址，如：192.168.1.1:8080/temp
  * 
- * busType 业务类型，该传输业务的唯一标识，自己定义
+ * @busType 业务类型，该传输业务的唯一标识，自己定义
  * 
- * toTableName 接收方数据库表名，针对同一业务传输向多个接收方，而且各自的表名都不一样的情况，这个参数的值不为空时会覆盖@Table、@SendTable和@PushTable的配置
+ * @toTableName 接收方数据库表名，针对同一业务传输向多个接收方，而且各自的表名都不一样的情况，这个参数的值不为空时会覆盖@Table、@SendTable和@PushTable的配置
  * 
- * renewal 是否断点续传，默认false
+ * @renewal 是否断点续传，默认false
  * 
- * requireSysColumn 是否需要传输系统的5个字段（status,create_date.....），默认false
+ * @requireSysColumn 是否需要传输系统的5个字段（status,create_date.....），默认false
  * 
- * requireSysColumnArr 如果系统的5个字段只传输其中一部分的话，在这里设置，如只用了create_date和update_date，{create_date,update_date}
+ * @requireSysColumnArr 如果系统的5个字段只传输其中一部分的话，在这里设置，如只用了create_date和update_date，{create_date,update_date}
  * 
- * requireTreeColumn 是否需要传输系统的树结构字段，继承TreeEntity才有的，默认false
+ * @requireTreeColumn 是否需要传输系统的树结构字段，继承TreeEntity才有的，默认false
  * 
- * requireAttachment 是否需要传输业务附件，默认true
+ * @requireAttachment 是否需要传输业务附件，默认true
  * 
- * extraFileList 额外要传输的文件列表，有需要额外传输的文件，这些文件不存在于附件中，比如跳过系统上传组件自动生成的文件，需要传如此参数
+ * @extraFileList 额外要传输的文件列表，有需要额外传输的文件，这些文件不存在于附件中，比如跳过系统上传组件自动生成的文件，需要传如此参数
  * 
- * extraFile 单个额外要传输的文件，有需要额外传输的文件，这些文件不存在于附件中，比如跳过系统上传组件自动生成的文件，需要传如此参数
+ * @extraFile 单个额外要传输的文件，有需要额外传输的文件，这些文件不存在于附件中，比如跳过系统上传组件自动生成的文件，需要传如此参数
  * 
- * extraStr 需要外传输的信息，随便任何格式的字符串，但是自动解析并不会处理这个字符串，需要在接收端用触发器处理
+ * @extraStr 需要外传输的信息，随便任何格式的字符串，但是自动解析并不会处理这个字符串，需要在接收端用触发器处理
  * 
- * triggerName 触发器注入名称，一般为类名首字母小写后的字符串，用于数据传输完成后，在接收端需要执行的一些业务逻辑，触发器类需要在接收端写好，实现ReceiveTrigger接口
+ * @triggerName 触发器注入名称，一般为类名首字母小写后的字符串，用于数据传输完成后，在接收端需要执行的一些业务逻辑，触发器类需要在接收端写好，实现ReceiveTrigger接口
+ * 
+ * @preTriggerName 预处理触发器注入名称，一般为类名首字母小写后的字符串，用于处理接收到的数据前，在接收端需要执行的一些业务逻辑，触发器类需要在接收端写好，实现PreReceiveTrigger接口
  * 
  * @author 彭嘉辉
  *
  */
 public class TransEntity<T extends DataEntity<?>> implements Serializable {}
-```  
-## TransmissionService  
 ```
+## TransmissionService  
+```java
 /**
  * 数据传输接口
  * 
@@ -301,55 +307,64 @@ public class TransEntity<T extends DataEntity<?>> implements Serializable {}
  *
  */
 public interface TransmissionService {
-    /**
+
+	/**
 	 * 数据传输
 	 * 
-	 * @param transEntity
-	 *            传输接口参数对象
+	 * @param transEntity 传输接口参数对象
 	 * @return 结果
 	 */
 	<T extends DataEntity<?>> Result clientSend(TransEntity<T> transEntity);
 
 	/**
-	 * 添加传输数据到批处理列表中，准备批量传输，在线传输和离线传输都用这个接口做批量处理
+	 * 添加发送数据到批处理列表中，准备发送传输，在线发送和离线发送都用这个接口做批量处理
 	 * 
-	 * @param transEntity
-	 *            传输接口参数对象
+	 * @param transEntity 传输接口参数对象
 	 * @throws Exception
 	 */
-	<T extends DataEntity<?>> void addTransBatch(TransEntity<T> transEntity) throws Exception;
+	<T extends DataEntity<?>> void addSendBatch(TransEntity<T> transEntity) throws Exception;
+
+	/**
+	 * 添加推送数据到批量处理列表中，准备批量推送
+	 * 
+	 * @param transEntity
+	 * @throws Exception
+	 */
+	<T extends DataEntity<?>> void addPushBatch(TransEntity<T> transEntity) throws Exception;
 
 	/**
 	 * 执行批量传输
 	 * 
-	 * @param transFlag
-	 *            传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
-	 * @param renewal
-	 *            是否断点续传
-	 * @param url
-	 *            接收方的地址，如192.168.6.1:8080/sbos，如果为空默认读取参数配的send.url的值
-	 * @param triggerName
-	 *            触发器注入名称，一般为类名首字母小写后的字符串，用于数据传输完成后，在接收端需要执行的一些业务逻辑，触发器类需要在接收端写好，实现ReceiveTrigger接口
+	 * @param transFlag      传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
+	 * @param renewal        是否断点续传
+	 * @param url            接收方的地址，如192.168.6.1:8080/sbos，如果为空默认读取参数配的send.url的值
+	 * @param triggerName    触发器注入名称，一般为类名首字母小写后的字符串，用于数据传输完成后，在接收端需要执行的一些业务逻辑，触发器类需要在接收端写好，实现ReceiveTrigger接口
+	 * @param preTriggerName 预处理触发器注入名称，一般为类名首字母小写后的字符串，用于处理接收到的数据前，在接收端需要执行的一些业务逻辑，触发器类需要在接收端写好，实现PreReceiveTrigger接口
 	 * @return 结果
 	 */
-	Result clientSendBatch(String transFlag, boolean renewal, String url, String triggerName);
+	Result clientSendBatch(String transFlag, boolean renewal, String url, String triggerName, String preTriggerName);
 
 	/**
 	 * 检测当前业务类型是否存在可断点续传的数据
 	 * 
-	 * @param busType
-	 *            业务类型
+	 * @param busType 业务类型
 	 * @return 是否
 	 */
 	boolean clientHasRenewal(String busType);
 
 	/**
+	 * 检测有无可拉取的数据
+	 * 
+	 * @param busType 业务类型
+	 * @return 有无
+	 */
+	boolean clientHasPullData(String busType);
+
+	/**
 	 * 向服务器拉取数据
 	 * 
-	 * @param busType
-	 *            应用类型
-	 * @param triggerName
-	 *            拉取数据成功后要执行的触发器注入名称
+	 * @param busType     应用类型
+	 * @param triggerName 拉取数据成功后要执行的触发器注入名称
 	 * @return 结果
 	 */
 	Result clientPull(String busType, String triggerName);
@@ -357,76 +372,64 @@ public interface TransmissionService {
 	/**
 	 * 离线导出数据
 	 * 
-	 * @param transEntity
-	 *            传输参数对象
-	 * @param exportFileName
-	 *            导出的文件名，如果空的话会以传入的业务类型作为文件名
-	 * @param request
-	 *            请求对象
-	 * @param response
-	 *            响应对象
+	 * @param transEntity    传输参数对象
+	 * @param exportFileName 导出的文件名，如果空的话会以传入的业务类型作为文件名
+	 * @param request        请求对象
+	 * @param response       响应对象
 	 */
 	<T extends DataEntity<?>> void export(TransEntity<T> transEntity, String exportFileName, HttpServletRequest request, HttpServletResponse response);
 
 	/**
 	 * 导出批量传输数据
 	 * 
-	 * @param transFlag
-	 *            传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
-	 * @param exportFileName
-	 *            导出的文件名，如果空的话会以传入的transFlag作为文件名
-	 * @param request
-	 *            请求对象
-	 * @param response
-	 *            响应对象
+	 * @param transFlag      传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
+	 * @param exportFileName 导出的文件名，如果空的话会以传入的transFlag作为文件名
+	 * @param request        请求对象
+	 * @param response       响应对象
 	 */
 	void exportBatch(String transFlag, String exportFileName, HttpServletRequest request, HttpServletResponse response);
 
 	/**
 	 * 导入离线传输数据
 	 * 
-	 * @param file
-	 *            上传的文件
-	 * @param busType
-	 *            业务类型，要与导出端保持一直
+	 * @param file           上传的文件
+	 * @param busType        业务类型，要与导出端保持一直
+	 * @param triggerName    触发器名称
+	 * @param preTriggerName 预处理触发器名称
 	 * @return 结果
 	 */
-	Result importData(MultipartFile file, String busType);
+	Result importData(MultipartFile file, String busType, String triggerName, String preTriggerName);
 
 	/**
 	 * 导入批量传输数据
 	 * 
-	 * @param file
-	 *            上传的文件
-	 * @param transFlag
-	 *            传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
+	 * @param file           上传的文件
+	 * @param transFlag      传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
+	 * @param triggerName    触发器名称
+	 * @param preTriggerName 预处理触发器
 	 * @return 结果
 	 */
-	Result importDataBatch(MultipartFile file, String transFlag);
+	Result importDataBatch(MultipartFile file, String transFlag, String triggerName, String preTriggerName);
 
 	/**
 	 * 推送数据
 	 * 
-	 * @param appUri
-	 *            接收方应用唯一标识
-	 * @param transEntity
-	 *            传输接口参数对象
+	 * @param appUri      接收方应用唯一标识
+	 * @param transEntity 传输接口参数对象
 	 * @return 结果
 	 */
 	<T extends DataEntity<?>> Result serverPush(String appUri, TransEntity<T> transEntity);
-	
+
 	/**
 	 * 批量推送
 	 * 
-	 * @param appUri
-	 *            接收方应用唯一标识
-	 * @param transFlag
-	 *            传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
+	 * @param appUri    接收方应用唯一标识
+	 * @param transFlag 传输业务的标识，用于标记一组批量传输的操作，作用类似于busType
 	 * @return 结果
 	 */
 	Result serverPushBatch(String appUri, String transFlag);
 }
-```  
+```
 ##### 觉得这个接口还可以的小伙伴点手关注啊，有兴趣了解的小伙伴就把代码check下来看一下吧  
 [还写了一个很难发现的文档，所以在这里给个友情链接](http://192.168.6.2/svn/jeesite/jc-modules/jc-send/blob/master/%E7%9C%9F%E2%80%A2readme.md)  
 ヾ(￣▽￣)Bye~Bye~
